@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" width="100" height="110">
+  <!-- Sunburst rays -->
+  <g transform="translate(50,44)" fill="#CBA153">
+    <!-- Long rays at cardinal/diagonal directions -->
+    <ellipse rx="2.2" ry="11" transform="rotate(0)"   opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(30)"  opacity="0.75"/>
+    <ellipse rx="2.2" ry="11" transform="rotate(60)"  opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(90)"  opacity="0.75"/>
+    <ellipse rx="2.2" ry="11" transform="rotate(120)" opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(150)" opacity="0.75"/>
+    <ellipse rx="2.2" ry="11" transform="rotate(180)" opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(210)" opacity="0.75"/>
+    <ellipse rx="2.2" ry="11" transform="rotate(240)" opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(270)" opacity="0.75"/>
+    <ellipse rx="2.2" ry="11" transform="rotate(300)" opacity="0.95"/>
+    <ellipse rx="1.6" ry="8"  transform="rotate(330)" opacity="0.75"/>
+  </g>
+  <!-- Center circle -->
+  <circle cx="50" cy="44" r="8" fill="#CBA153"/>
+  <!-- Inner circle highlight -->
+  <circle cx="50" cy="44" r="4.5" fill="#E8C27A"/>
+
+  <!-- LAGOM text -->
+  <text
+    x="50" y="74"
+    text-anchor="middle"
+    font-family="'Segoe UI', Georgia, serif"
+    font-size="13"
+    font-weight="700"
+    letter-spacing="3"
+    fill="#4A3B32">LAGOM</text>
+
+  <!-- WEAR text -->
+  <text
+    x="50" y="86"
+    text-anchor="middle"
+    font-family="'Segoe UI', Georgia, serif"
+    font-size="7"
+    font-weight="400"
+    letter-spacing="4"
+    fill="#7A6555">WEAR</text>
+</svg>
