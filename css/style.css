@@ -233,6 +233,7 @@ body {
   z-index: 500;
   padding: 1rem;
 }
+.modal-overlay[hidden] { display: none; }
 .modal {
   background: var(--surface);
   border-radius: var(--radius);
