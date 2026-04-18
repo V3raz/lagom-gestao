@@ -31,6 +31,12 @@ export async function fetchPedidosCliente(clienteId, limit = 10) {
   return data ?? [];
 }
 
+/** Remove cliente */
+export async function deleteCliente(id) {
+  const { error } = await db.from("clientes").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /** Insere novo cliente */
 export async function insertCliente(dados) {
   const { data, error } = await db.from(T).insert(dados).select().single();

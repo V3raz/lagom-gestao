@@ -1,4 +1,4 @@
-import { fetchClientes, insertCliente, fetchPedidosCliente, abaterDebito } from "../db/clientes.js";
+import { fetchClientes, insertCliente, deleteCliente, fetchPedidosCliente, abaterDebito } from "../db/clientes.js";
 import { brl, dataBR, showToast } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
@@ -154,6 +154,7 @@ function renderList(clientes) {
         ${c.debito_pendente > 0
           ? `<button class="btn btn-primary btn-sm btn-abater" data-id="${c.id}" data-debito="${c.debito_pendente}">Abater</button>`
           : ""}
+        <button class="btn btn-sm btn-deletar-cliente" data-id="${c.id}" data-nome="${c.nome}" style="color:var(--danger)" title="Remover cliente">🗑</button>
       </div>
     </div>`).join("");
 }
@@ -189,6 +190,19 @@ async function handleListClick(e) {
         `<p class="empty-state">Erro ao carregar histórico.</p>`;
       showToast(err.message, "error");
     }
+  }
+
+  const btnDeletar = e.target.closest(".btn-deletar-cliente");
+  if (btnDeletar) {
+    const id   = btnDeletar.dataset.id;
+    const nome = btnDeletar.dataset.nome;
+    if (!confirm(`Remover "${nome}" permanentemente?`)) return;
+    try {
+      await deleteCliente(id);
+      allClientes = allClientes.filter(c => c.id !== id);
+      renderList(allClientes);
+      showToast(`"${nome}" removido.`);
+    } catch (err) { showToast(err.message, "error"); }
   }
 
   if (btnAbater) {
