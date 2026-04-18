@@ -64,10 +64,24 @@ function initSidebar() {
 }
 
 function initTopbar() {
-  // Toggle sidebar em mobile
-  document.getElementById("btnMenuToggle")?.addEventListener("click", () => {
-    document.getElementById("sidebar").classList.toggle("sidebar--open");
-  });
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  const toggle  = document.getElementById("btnMenuToggle");
+
+  function openSidebar()  { sidebar.classList.add("sidebar--open");    overlay.classList.add("active"); }
+  function closeSidebar() { sidebar.classList.remove("sidebar--open"); overlay.classList.remove("active"); }
+
+  toggle?.addEventListener("click", () =>
+    sidebar.classList.contains("sidebar--open") ? closeSidebar() : openSidebar()
+  );
+  overlay?.addEventListener("click", closeSidebar);
+
+  // Fechar ao navegar (mobile)
+  document.querySelectorAll(".nav-item").forEach(item =>
+    item.addEventListener("click", () => {
+      if (window.innerWidth < 768) closeSidebar();
+    })
+  );
 }
 
 // Arranca o app
