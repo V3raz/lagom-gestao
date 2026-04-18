@@ -3,11 +3,12 @@ import { db } from "../supabase.js";
 const T = "roupas";
 
 /** Busca todos os produtos com filtros opcionais */
-export async function fetchRoupas({ search = "", tamanho = "", cor = "", categoria = "" } = {}) {
-  let q = db.from(T).select("*").order("nome");
+export async function fetchRoupas({ search = "", tamanho = "", cor = "", categoria = "", marca_id = "" } = {}) {
+  let q = db.from(T).select("*, marcas(id, nome, margem_padrao)").order("nome");
   if (tamanho)   q = q.eq("tamanho", tamanho);
   if (cor)       q = q.eq("cor", cor);
   if (categoria) q = q.eq("categoria", categoria);
+  if (marca_id)  q = q.eq("marca_id", marca_id);
   if (search)    q = q.or(`nome.ilike.%${search}%,sku.ilike.%${search}%`);
   const { data, error } = await q;
   if (error) throw error;

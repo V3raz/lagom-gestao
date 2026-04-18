@@ -607,10 +607,11 @@ body {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 0.4rem;
 }
 .bipar-wrap .search-icon { left: 0.75rem; }
 .bipar-input {
-  width: 100%;
+  flex: 1;
   padding: 0.55rem 0.75rem 0.55rem 2.2rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -870,6 +871,232 @@ body {
   padding: 0.2rem 0.35rem; border-radius: 4px; transition: all var(--trans);
 }
 .btn-rm-anotacao:hover { background: var(--danger-bg); color: var(--danger); }
+
+/* ============================================================
+   SCANNER DE CÓDIGO DE BARRAS (Feature 3)
+   ============================================================ */
+
+.scanner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(74,59,50,.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  padding: 1rem;
+}
+
+.scanner-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+}
+
+.scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-lt);
+}
+
+.scanner-titulo {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scanner-fechar {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.scanner-viewport {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+.scanner-video {
+  width: 100%;
+  display: block;
+  max-height: 320px;
+  object-fit: cover;
+}
+
+.scanner-linha {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 50%;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: scanner-sweep 2s ease-in-out infinite alternate;
+}
+
+@keyframes scanner-sweep {
+  from { top: 30%; }
+  to   { top: 70%; }
+}
+
+.scanner-status {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-sec);
+  text-align: center;
+}
+
+/* Botão câmera inline (input-addon) */
+.btn-camera {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  color: var(--text-sec);
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all var(--trans);
+  flex-shrink: 0;
+}
+.btn-camera:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--text); }
+
+/* Modal gerenciar marcas/categorias */
+.modal-lg { max-width: 640px; }
+
+.mgr-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.mgr-tab {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--text-sec);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all var(--trans);
+}
+.mgr-tab:hover { color: var(--text); }
+.mgr-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.mgr-section { display: none; }
+.mgr-section--active { display: block; }
+
+.mgr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.mgr-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.mgr-item-nome { flex: 1; font-weight: 600; }
+.mgr-item-sub  { font-size: 0.78rem; color: var(--text-muted); }
+.mgr-item-del  {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem;
+  border-radius: 4px; transition: all var(--trans);
+}
+.mgr-item-del:hover { background: var(--danger-bg); color: var(--danger); }
+
+.mgr-add-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.mgr-add-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+
+/* Preço de custo + botão calcular */
+.preco-group {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.preco-group input { flex: 1; }
+.btn-calc {
+  padding: 0.45rem 0.65rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--trans);
+  flex-shrink: 0;
+}
+.btn-calc:hover { background: var(--accent); color: #fff; }
+
+/* Marca badge no card */
+.pcard-marca {
+  font-size: 0.68rem;
+  color: var(--accent-dark);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* inline add categoria */
+.cat-add-inline {
+  display: none;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+.cat-add-inline.visible { display: flex; }
+.cat-add-inline input {
+  flex: 1;
+  padding: 0.42rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  background: var(--bg);
+  color: var(--text);
+}
+.cat-add-inline input:focus { outline: none; border-color: var(--accent); }
+
+/* Botão gerenciar marcas */
+.btn-gerenciar {
+  padding: 0.42rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans);
+  white-space: nowrap;
+}
+.btn-gerenciar:hover { border-color: var(--accent); color: var(--text); background: var(--accent-bg); }
 
 /* ============================================================
    RESPONSIVO

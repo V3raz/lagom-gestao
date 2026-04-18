@@ -4,6 +4,7 @@ import {
 } from "../db/vendas.js";
 import { fetchRoupas } from "../db/estoque.js";
 import { fetchClientes } from "../db/clientes.js";
+import { abrirScanner } from "../scanner.js";
 import { brl, showToast } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
@@ -205,13 +206,14 @@ function renderPanelRight() {
       <h2 class="panel-title">Detalhes do Pedido Ativo #${pedidoAtivo.numero}</h2>
 
       <!-- Busca de produto -->
-      <div class="bipar-wrap">
+      <div class="bipar-wrap" style="gap:0.4rem">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="1" y="4" width="3" height="16"/><rect x="6" y="4" width="1.5" height="16"/>
           <rect x="10" y="4" width="3" height="16"/><rect x="15.5" y="4" width="1.5" height="16"/>
           <rect x="19" y="4" width="3" height="16"/>
         </svg>
         <input type="text" id="biparInput" class="bipar-input" placeholder="Bipar Código ou Digitar SKU (ex: LW-1001)">
+        <button type="button" id="btnScanVendas" class="btn-camera" title="Escanear com câmera">📷</button>
       </div>
 
       <!-- Grid do catálogo -->
@@ -254,6 +256,25 @@ function renderPanelRight() {
   document.getElementById("biparInput").addEventListener("input", e => {
     clearTimeout(biparTimer);
     biparTimer = setTimeout(() => filterCatalog(e.target.value), 250);
+  });
+
+  // Scanner câmera no campo bipar (Feature 3)
+  document.getElementById("btnScanVendas").addEventListener("click", () => {
+    abrirScanner(codigo => {
+      const input = document.getElementById("biparInput");
+      if (!input) return;
+      input.value = codigo;
+      filterCatalog(codigo);
+      // Tenta auto-adicionar se encontrar produto único com código exato
+      const exato = catalogRoupas.find(r =>
+        r.sku?.toLowerCase() === codigo.toLowerCase() || r.barcode === codigo
+      );
+      if (exato && exato.quantidade > 0) {
+        requestAddItem(exato);
+      } else {
+        showToast(`Código: ${codigo} — selecione o produto.`);
+      }
+    });
   });
 
   // Clique em card do catálogo
