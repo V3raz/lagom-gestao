@@ -48,10 +48,6 @@ export function renderView() {
               <label>Telefone</label>
               <input type="tel" id="cTelefone" placeholder="(00) 00000-0000">
             </div>
-            <div class="form-group">
-              <label>Observação</label>
-              <textarea id="cObs" rows="3" placeholder="Observações..." style="resize:vertical;width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--bg);color:var(--text)"></textarea>
-            </div>
             <div class="modal-actions">
               <button type="button" class="btn btn-secondary" data-close="modalCliente">Cancelar</button>
               <button type="submit" id="btnSalvarCliente" class="btn btn-primary">Salvar Cliente</button>
@@ -221,7 +217,6 @@ async function handleSubmitCliente(e) {
     const novo = await insertCliente({
       nome:     document.getElementById("cNome").value.trim(),
       telefone: document.getElementById("cTelefone").value.trim() || null,
-      obs:      document.getElementById("cObs").value.trim() || null,
       debito_pendente: 0,
     });
     allClientes.push(novo);

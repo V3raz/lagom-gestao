@@ -80,12 +80,12 @@ async function loadAnotacoes() {
           <span class="anotacao-titulo">${a.titulo}</span>
           <span class="anotacao-data">${dataBR(a.created_at)}</span>
         </div>
-        <p class="anotacao-texto">${a.texto ?? ""}</p>
+        <p class="anotacao-texto">${a.conteudo ?? ""}</p>
         <div class="anotacao-actions">
           <button class="btn-edit-anotacao btn btn-secondary btn-sm"
                   data-aid="${a.id}"
                   data-titulo="${a.titulo}"
-                  data-texto="${(a.texto ?? '').replace(/"/g, '&quot;')}"
+                  data-texto="${(a.conteudo ?? '').replace(/"/g, '&quot;')}"
                   title="Editar">Editar</button>
           <button class="btn-rm-anotacao btn btn-sm" style="color:var(--danger)" data-aid="${a.id}" title="Excluir">Excluir</button>
         </div>
@@ -134,10 +134,10 @@ async function handleSalvar(e) {
 
   try {
     if (id) {
-      await updateAnotacao(id, { titulo, texto });
+      await updateAnotacao(id, { titulo, conteudo: texto });
       showToast("Anotação atualizada.");
     } else {
-      await insertAnotacao({ titulo, texto });
+      await insertAnotacao({ titulo, conteudo: texto });
       showToast("Anotação salva.");
     }
     document.getElementById("modalAnotacao").hidden = true;
