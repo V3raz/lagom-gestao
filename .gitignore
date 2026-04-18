@@ -1,0 +1,7 @@
+# Credenciais — NUNCA commitar
+js/config.js
+
+# Node / OS
+node_modules/
+.DS_Store
+Thumbs.db
