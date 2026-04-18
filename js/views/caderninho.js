@@ -1,13 +1,13 @@
 import { fetchAnotacoes, insertAnotacao, updateAnotacao, deleteAnotacao } from "../db/anotacoes.js";
 import { dataBR, showToast } from "../utils.js";
 
-// ——— Template ——————————————————————————————————————————————————
+// â”€â”€ Template â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function renderView() {
   return `
     <div class="view-caderninho">
       <div class="view-header">
         <h1 class="view-title">Caderninho</h1>
-        <button id="btnNovaAnotacao" class="btn btn-primary">+ Nova Anotação</button>
+        <button id="btnNovaAnotacao" class="btn btn-primary">+ Nova AnotaÃ§Ã£o</button>
       </div>
       <div id="anotacoesList" class="anotacoes-list">
         <div class="loading"><div class="spinner"></div></div>
@@ -16,16 +16,16 @@ export function renderView() {
       <div id="modalAnotacao" class="modal-overlay" hidden>
         <div class="modal">
           <div class="modal-header">
-            <h2 id="modalAnotacaoTitulo">Nova Anotação</h2>
+            <h2 id="modalAnotacaoTitulo">Nova AnotaÃ§Ã£o</h2>
             <button class="modal-close" data-close="modalAnotacao">&times;</button>
           </div>
           <form id="formAnotacao" class="modal-form">
             <div class="form-group">
-              <label>Título</label>
+              <label>TÃ­tulo</label>
               <input type="text" id="anotacaoTitulo" placeholder="Ex: Pedido especial Fulana..." required>
             </div>
             <div class="form-group">
-              <label>Anotação</label>
+              <label>AnotaÃ§Ã£o</label>
               <textarea id="anotacaoTexto" rows="6" placeholder="Digite aqui..." style="resize:vertical;width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--bg);color:var(--text)"></textarea>
             </div>
             <div class="modal-actions">
@@ -38,41 +38,39 @@ export function renderView() {
     </div>`;
 }
 
-// ——— Init ——————————————————————————————————————————————————
+// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function initView() {
   await loadAnotacoes();
 
-  // Event listener para abrir o modal de nova anotação
   document.getElementById("btnNovaAnotacao").addEventListener("click", () => {
-    const formAnotacao = document.getElementById("formAnotacao");
-    formAnotacao.reset(); // Limpa o formulário
-    delete formAnotacao.dataset.editingId; // Remove o ID de edição
-    document.getElementById("modalAnotacaoTitulo").textContent = "Nova Anotação"; // Define o título do modal
-    document.getElementById("modalAnotacao").hidden = false; // Exibe o modal
+    const form = document.getElementById("formAnotacao");
+    form.reset();
+    delete form.dataset.editingId;
+    document.getElementById("modalAnotacaoTitulo").textContent = "Nova AnotaÃ§Ã£o";
+    document.getElementById("modalAnotacao").hidden = false;
+    document.getElementById("anotacaoTitulo").focus();
   });
 
-  // Event listener para o envio do formulário de anotação
   document.getElementById("formAnotacao").addEventListener("submit", handleSalvar);
 
-  // Event listeners para fechar modais
   document.querySelectorAll("[data-close]").forEach(btn =>
     btn.addEventListener("click", () => { document.getElementById(btn.dataset.close).hidden = true; })
   );
-  // Fechar modal ao clicar fora
   document.getElementById("modalAnotacao").addEventListener("click", e => {
     if (e.target.id === "modalAnotacao") document.getElementById("modalAnotacao").hidden = true;
   });
 }
 
-// Carrega e renderiza as anotações
+// â”€â”€ FunÃ§Ãµes internas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 async function loadAnotacoes() {
   const el = document.getElementById("anotacoesList");
-  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`; // Mostrar spinner de carregamento
+  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
-    const lista = await fetchAnotacoes(); // Busca as anotações usando a nova função
-    
+    const lista = await fetchAnotacoes();
+
     if (!lista.length) {
-      el.innerHTML = `<p class="empty-state">Nenhuma anotação ainda. Clique em "+ Nova Anotação".</p>`;
+      el.innerHTML = `<p class="empty-state">Nenhuma anotaÃ§Ã£o ainda. Clique em "+ Nova AnotaÃ§Ã£o".</p>`;
       return;
     }
 
@@ -84,76 +82,68 @@ async function loadAnotacoes() {
         </div>
         <p class="anotacao-texto">${a.texto ?? ""}</p>
         <div class="anotacao-actions">
-            <button class="btn-edit-anotacao" 
-                    data-aid="${a.id}" 
-                    data-titulo="${a.titulo}" 
-                    data-texto="${a.texto ?? ''}" 
-                    title="Editar">Editar</button>
-            <button class="btn-rm-anotacao" data-aid="${a.id}" title="Excluir">Excluir</button>
+          <button class="btn-edit-anotacao btn btn-secondary btn-sm"
+                  data-aid="${a.id}"
+                  data-titulo="${a.titulo}"
+                  data-texto="${(a.texto ?? '').replace(/"/g, '&quot;')}"
+                  title="Editar">Editar</button>
+          <button class="btn-rm-anotacao btn btn-sm" style="color:var(--danger)" data-aid="${a.id}" title="Excluir">Excluir</button>
         </div>
       </div>`).join("");
 
-    // Event listener para botões de remoção
     el.querySelectorAll(".btn-rm-anotacao").forEach(btn =>
       btn.addEventListener("click", async () => {
-        if (confirm("Tem certeza que deseja excluir esta anotação?")) {
-            try {
-                await deleteAnotacao(btn.dataset.aid); // Chama a nova função de deleção
-                btn.closest(".anotacao-card").remove();
-                showToast("Anotação removida.");
-                // Se não houver mais anotações, exibe a mensagem de estado vazio
-                if (el.children.length === 0) {
-                    el.innerHTML = `<p class="empty-state">Nenhuma anotação ainda. Clique em "+ Nova Anotação".</p>`;
-                }
-            } catch (err) {
-                showToast(`Erro ao remover anotação: ${err.message}`, "error");
-            }
+        if (!confirm("Excluir esta anotaÃ§Ã£o?")) return;
+        try {
+          await deleteAnotacao(btn.dataset.aid);
+          btn.closest(".anotacao-card").remove();
+          showToast("AnotaÃ§Ã£o removida.");
+          if (!el.querySelector(".anotacao-card")) {
+            el.innerHTML = `<p class="empty-state">Nenhuma anotaÃ§Ã£o ainda. Clique em "+ Nova AnotaÃ§Ã£o".</p>`;
+          }
+        } catch (err) {
+          showToast(err.message, "error");
         }
       })
     );
 
-    // Event listener para botões de edição
     el.querySelectorAll(".btn-edit-anotacao").forEach(btn =>
-        btn.addEventListener("click", () => {
-            const formAnotacao = document.getElementById("formAnotacao");
-            document.getElementById("modalAnotacaoTitulo").textContent = "Editar Anotação";
-            document.getElementById("anotacaoTitulo").value = btn.dataset.titulo;
-            document.getElementById("anotacaoTexto").value = btn.dataset.texto;
-            formAnotacao.dataset.editingId = btn.dataset.aid; // Armazena o ID da anotação sendo editada
-            document.getElementById("modalAnotacao").hidden = false;
-        })
+      btn.addEventListener("click", () => {
+        const form = document.getElementById("formAnotacao");
+        document.getElementById("modalAnotacaoTitulo").textContent = "Editar AnotaÃ§Ã£o";
+        document.getElementById("anotacaoTitulo").value = btn.dataset.titulo;
+        document.getElementById("anotacaoTexto").value = btn.dataset.texto;
+        form.dataset.editingId = btn.dataset.aid;
+        document.getElementById("modalAnotacao").hidden = false;
+      })
     );
 
   } catch (err) {
-    // A camada db já trata erros, então aqui podemos mostrar uma mensagem genérica ou logar
-    console.error("Erro ao carregar anotações:", err);
-    el.innerHTML = `<p class="empty-state">Erro ao carregar anotações. Tente novamente mais tarde.</p>`;
-    showToast(`Erro ao carregar anotações: ${err.message}`, "error");
+    console.error(err);
+    el.innerHTML = `<p class="empty-state">Erro ao carregar anotaÃ§Ãµes.</p>`;
+    showToast(err.message, "error");
   }
 }
 
-// Lida com o salvamento (inserção ou atualização) de uma anotação
 async function handleSalvar(e) {
   e.preventDefault();
-  const formAnotacao = document.getElementById("formAnotacao");
+  const form   = document.getElementById("formAnotacao");
   const titulo = document.getElementById("anotacaoTitulo").value.trim();
   const texto  = document.getElementById("anotacaoTexto").value.trim();
-  const id = formAnotacao.dataset.editingId; // Pega o ID se estiver editando
+  const id     = form.dataset.editingId;
 
   try {
     if (id) {
-      // Se houver um ID, atualiza a anotação existente
       await updateAnotacao(id, { titulo, texto });
-      showToast("Anotação atualizada.");
+      showToast("AnotaÃ§Ã£o atualizada.");
     } else {
-      // Caso contrário, insere uma nova anotação
       await insertAnotacao({ titulo, texto });
-      showToast("Anotação salva.");
+      showToast("AnotaÃ§Ã£o salva.");
     }
-    document.getElementById("modalAnotacao").hidden = true; // Esconde o modal
-    delete formAnotacao.dataset.editingId; // Limpa o ID de edição
-    await loadAnotacoes(); // Recarrega a lista de anotações
-  } catch (err) { 
-    showToast(`Erro ao salvar anotação: ${err.message}`, "error"); 
+    document.getElementById("modalAnotacao").hidden = true;
+    delete form.dataset.editingId;
+    await loadAnotacoes();
+  } catch (err) {
+    showToast(err.message, "error");
   }
 }
