@@ -2,10 +2,12 @@
 // LAGOM GESTÃO — App Principal (Router + Shell)
 // ============================================================
 
-import * as Estoque   from "./views/estoque.js";
-import * as Vendas    from "./views/vendas.js";
-import * as Clientes  from "./views/clientes.js";
+import * as Estoque    from "./views/estoque.js";
+import * as Vendas     from "./views/vendas.js";
+import * as Clientes   from "./views/clientes.js";
 import * as Caderninho from "./views/caderninho.js";
+import * as Ajuda      from "./views/ajuda.js";
+import { mostrarOnboardingSeNecessario } from "./onboarding.js";
 
 // Mapa de rotas
 const routes = {
@@ -13,6 +15,7 @@ const routes = {
   "/vendas":     { module: Vendas,     label: "Vendas"     },
   "/clientes":   { module: Clientes,   label: "Clientes"   },
   "/caderninho": { module: Caderninho, label: "Caderninho" },
+  "/ajuda":      { module: Ajuda,      label: "Ajuda"      },
 };
 
 const DEFAULT_ROUTE = "/estoque";
@@ -90,6 +93,8 @@ function init() {
   initTopbar();
   // Navega diretamente — não depende de hashchange disparar
   navigate(normalizePath(window.location.hash));
+  // Mostra onboarding na primeira visita
+  mostrarOnboardingSeNecessario();
 }
 
 init();
