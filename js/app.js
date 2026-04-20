@@ -7,7 +7,7 @@ import * as Vendas     from "./views/vendas.js";
 import * as Clientes   from "./views/clientes.js";
 import * as Caderninho from "./views/caderninho.js";
 import * as Ajuda      from "./views/ajuda.js";
-import { mostrarOnboardingSeNecessario } from "./onboarding.js";
+import { mostrarOnboardingSeNecessario, reabrirOnboarding } from "./onboarding.js";
 
 // Mapa de rotas
 const routes = {
@@ -95,6 +95,8 @@ function init() {
   navigate(normalizePath(window.location.hash));
   // Mostra onboarding na primeira visita
   mostrarOnboardingSeNecessario();
+  // Expõe no console: lagom.tutorial()
+  window.lagom = { tutorial: reabrirOnboarding };
 }
 
 init();

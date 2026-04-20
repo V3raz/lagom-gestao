@@ -3,6 +3,8 @@
 // Guia completo de uso do sistema
 // ============================================================
 
+import { reabrirOnboarding } from "../onboarding.js";
+
 export function renderView() {
   return `
     <div class="view-ajuda">
@@ -13,6 +15,9 @@ export function renderView() {
           <span class="ajuda-hero-icon">✦</span>
           <h1 class="ajuda-hero-title">Central de Ajuda</h1>
           <p class="ajuda-hero-sub">Tudo que você precisa saber para usar o Lagom Gestão com confiança.</p>
+          <button id="btnVerTutorial" class="btn btn-primary" style="margin-top:1.25rem;gap:0.5rem">
+            🎬 Ver Tutorial de Boas-Vindas
+          </button>
         </div>
       </div>
 
@@ -377,6 +382,11 @@ export function renderView() {
 }
 
 export function initView() {
+  // Botão Ver Tutorial
+  document.getElementById("btnVerTutorial")?.addEventListener("click", () => {
+    reabrirOnboarding();
+  });
+
   // Smooth scroll nos links do índice
   document.querySelectorAll(".ajuda-indice-item").forEach(link => {
     link.addEventListener("click", e => {
