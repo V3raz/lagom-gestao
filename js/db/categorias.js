@@ -16,6 +16,13 @@ export async function insertCategoria(nome) {
   return data;
 }
 
+/** Atualiza categoria existente */
+export async function updateCategoria(id, nome) {
+  const { data, error } = await db.from(T).update({ nome }).eq("id", id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 /** Deleta categoria */
 export async function deleteCategoria(id) {
   const { error } = await db.from(T).delete().eq("id", id);

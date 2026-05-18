@@ -1,6 +1,6 @@
 import { fetchRoupas, reporEstoque, deleteRoupa, insertRoupa } from "../db/estoque.js";
-import { fetchMarcas, insertMarca, deleteMarca } from "../db/marcas.js";
-import { fetchCategorias, insertCategoria, deleteCategoria } from "../db/categorias.js";
+import { fetchMarcas, insertMarca, updateMarca, deleteMarca } from "../db/marcas.js";
+import { fetchCategorias, insertCategoria, updateCategoria, deleteCategoria } from "../db/categorias.js";
 import { abrirScanner } from "../scanner.js";
 import { brl, gerarSKU, showToast, fileToDataUrl } from "../utils.js";
 
@@ -549,13 +549,33 @@ function bindGerenciarEvents() {
     } catch (err) { showToast(err.message, "error"); }
   });
 
-  // Deletar via delegação
+  // Editar/Deletar marca via delegação
   document.getElementById("mgrMarcasList").addEventListener("click", async (e) => {
-    const btn = e.target.closest(".mgr-item-del[data-mid]");
-    if (!btn) return;
-    if (!confirm(`Deletar marca "${btn.dataset.nome}"?`)) return;
+    const editBtn = e.target.closest(".mgr-item-edit[data-mid]");
+    if (editBtn) {
+      const novoNome = prompt("Editar nome da marca:", editBtn.dataset.nome);
+      if (novoNome === null) return;
+      const nomeFinal = novoNome.trim();
+      if (!nomeFinal) { showToast("Nome não pode ser vazio.", "error"); return; }
+      const novaMargemStr = prompt("Editar margem (%):", editBtn.dataset.margem);
+      if (novaMargemStr === null) return;
+      const margemFinal = parseFloat(novaMargemStr);
+      if (isNaN(margemFinal) || margemFinal < 0) { showToast("Margem inválida.", "error"); return; }
+      try {
+        await updateMarca(editBtn.dataset.mid, { nome: nomeFinal, margem_padrao: margemFinal });
+        allMarcas = await fetchMarcas();
+        populateMarcaSelects();
+        renderMgrMarcas();
+        showToast(`Marca atualizada para "${nomeFinal}".`);
+      } catch (err) { showToast(err.message, "error"); }
+      return;
+    }
+
+    const delBtn = e.target.closest(".mgr-item-del[data-mid]");
+    if (!delBtn) return;
+    if (!confirm(`Deletar marca "${delBtn.dataset.nome}"?`)) return;
     try {
-      await deleteMarca(btn.dataset.mid);
+      await deleteMarca(delBtn.dataset.mid);
       allMarcas = await fetchMarcas();
       populateMarcaSelects();
       renderMgrMarcas();
@@ -564,11 +584,27 @@ function bindGerenciarEvents() {
   });
 
   document.getElementById("mgrCatList").addEventListener("click", async (e) => {
-    const btn = e.target.closest(".mgr-item-del[data-cid]");
-    if (!btn) return;
-    if (!confirm(`Deletar categoria "${btn.dataset.nome}"?`)) return;
+    const editBtn = e.target.closest(".mgr-item-edit[data-cid]");
+    if (editBtn) {
+      const novoNome = prompt("Editar nome da categoria:", editBtn.dataset.nome);
+      if (novoNome === null) return;
+      const nomeFinal = novoNome.trim();
+      if (!nomeFinal) { showToast("Nome não pode ser vazio.", "error"); return; }
+      try {
+        await updateCategoria(editBtn.dataset.cid, nomeFinal);
+        allCategorias = await fetchCategorias();
+        populateCatSelects();
+        renderMgrCategorias();
+        showToast(`Categoria atualizada para "${nomeFinal}".`);
+      } catch (err) { showToast(err.message, "error"); }
+      return;
+    }
+
+    const delBtn = e.target.closest(".mgr-item-del[data-cid]");
+    if (!delBtn) return;
+    if (!confirm(`Deletar categoria "${delBtn.dataset.nome}"?`)) return;
     try {
-      await deleteCategoria(btn.dataset.cid);
+      await deleteCategoria(delBtn.dataset.cid);
       allCategorias = await fetchCategorias();
       populateCatSelects();
       renderMgrCategorias();
@@ -597,6 +633,7 @@ function renderMgrMarcas() {
     <div class="mgr-item">
       <span class="mgr-item-nome">${m.nome}</span>
       <span class="mgr-item-sub">Margem: ${m.margem_padrao}%</span>
+      <button class="mgr-item-edit" data-mid="${m.id}" data-nome="${m.nome}" data-margem="${m.margem_padrao}" title="Editar">✏️</button>
       <button class="mgr-item-del" data-mid="${m.id}" data-nome="${m.nome}" title="Deletar">🗑</button>
     </div>`).join("");
 }
@@ -611,6 +648,7 @@ function renderMgrCategorias() {
   el.innerHTML = allCategorias.map(c => `
     <div class="mgr-item">
       <span class="mgr-item-nome">${c.nome}</span>
+      <button class="mgr-item-edit" data-cid="${c.id}" data-nome="${c.nome}" title="Editar">✏️</button>
       <button class="mgr-item-del" data-cid="${c.id}" data-nome="${c.nome}" title="Deletar">🗑</button>
     </div>`).join("");
 }

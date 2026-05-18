@@ -1017,12 +1017,13 @@ body {
 }
 .mgr-item-nome { flex: 1; font-weight: 600; }
 .mgr-item-sub  { font-size: 0.78rem; color: var(--text-muted); }
-.mgr-item-del  {
+.mgr-item-del, .mgr-item-edit {
   background: none; border: none; color: var(--text-muted);
   cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem;
   border-radius: 4px; transition: all var(--trans);
 }
-.mgr-item-del:hover { background: var(--danger-bg); color: var(--danger); }
+.mgr-item-del:hover  { background: var(--danger-bg); color: var(--danger); }
+.mgr-item-edit:hover { background: var(--accent-bg, rgba(212,175,55,0.15)); color: var(--accent, #d4af37); }
 
 .mgr-add-form {
   display: flex;
