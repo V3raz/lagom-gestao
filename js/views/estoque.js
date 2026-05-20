@@ -248,6 +248,52 @@ export function renderView() {
         </div>
       </div>
 
+      <!-- ===== Modal Editar Marca ===== -->
+      <div id="modalEditMarca" class="modal-overlay" hidden>
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Editar Marca</h2>
+            <button class="modal-close" data-close="modalEditMarca">✕</button>
+          </div>
+          <form id="formEditMarca" class="modal-form" novalidate>
+            <input type="hidden" id="editMarcaId">
+            <div class="form-group">
+              <label>Nome da Marca <span class="req">*</span></label>
+              <input type="text" id="editMarcaNome" required>
+            </div>
+            <div class="form-group">
+              <label>Margem (%) <span class="req">*</span></label>
+              <input type="number" id="editMarcaMargem" required min="0" max="999" step="0.01">
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modalEditMarca">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== Modal Editar Categoria ===== -->
+      <div id="modalEditCat" class="modal-overlay" hidden>
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Editar Categoria</h2>
+            <button class="modal-close" data-close="modalEditCat">✕</button>
+          </div>
+          <form id="formEditCat" class="modal-form" novalidate>
+            <input type="hidden" id="editCatId">
+            <div class="form-group">
+              <label>Nome da Categoria <span class="req">*</span></label>
+              <input type="text" id="editCatNome" required>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modalEditCat">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </div>`;
 }
 
@@ -553,21 +599,11 @@ function bindGerenciarEvents() {
   document.getElementById("mgrMarcasList").addEventListener("click", async (e) => {
     const editBtn = e.target.closest(".mgr-item-edit[data-mid]");
     if (editBtn) {
-      const novoNome = prompt("Editar nome da marca:", editBtn.dataset.nome);
-      if (novoNome === null) return;
-      const nomeFinal = novoNome.trim();
-      if (!nomeFinal) { showToast("Nome não pode ser vazio.", "error"); return; }
-      const novaMargemStr = prompt("Editar margem (%):", editBtn.dataset.margem);
-      if (novaMargemStr === null) return;
-      const margemFinal = parseFloat(novaMargemStr);
-      if (isNaN(margemFinal) || margemFinal < 0) { showToast("Margem inválida.", "error"); return; }
-      try {
-        await updateMarca(editBtn.dataset.mid, { nome: nomeFinal, margem_padrao: margemFinal });
-        allMarcas = await fetchMarcas();
-        populateMarcaSelects();
-        renderMgrMarcas();
-        showToast(`Marca atualizada para "${nomeFinal}".`);
-      } catch (err) { showToast(err.message, "error"); }
+      document.getElementById("editMarcaId").value = editBtn.dataset.mid;
+      document.getElementById("editMarcaNome").value = editBtn.dataset.nome;
+      document.getElementById("editMarcaMargem").value = editBtn.dataset.margem;
+      document.getElementById("modalEditMarca").hidden = false;
+      setTimeout(() => document.getElementById("editMarcaNome").focus(), 50);
       return;
     }
 
@@ -586,17 +622,10 @@ function bindGerenciarEvents() {
   document.getElementById("mgrCatList").addEventListener("click", async (e) => {
     const editBtn = e.target.closest(".mgr-item-edit[data-cid]");
     if (editBtn) {
-      const novoNome = prompt("Editar nome da categoria:", editBtn.dataset.nome);
-      if (novoNome === null) return;
-      const nomeFinal = novoNome.trim();
-      if (!nomeFinal) { showToast("Nome não pode ser vazio.", "error"); return; }
-      try {
-        await updateCategoria(editBtn.dataset.cid, nomeFinal);
-        allCategorias = await fetchCategorias();
-        populateCatSelects();
-        renderMgrCategorias();
-        showToast(`Categoria atualizada para "${nomeFinal}".`);
-      } catch (err) { showToast(err.message, "error"); }
+      document.getElementById("editCatId").value = editBtn.dataset.cid;
+      document.getElementById("editCatNome").value = editBtn.dataset.nome;
+      document.getElementById("modalEditCat").hidden = false;
+      setTimeout(() => document.getElementById("editCatNome").focus(), 50);
       return;
     }
 
@@ -609,6 +638,40 @@ function bindGerenciarEvents() {
       populateCatSelects();
       renderMgrCategorias();
       showToast("Categoria removida.");
+    } catch (err) { showToast(err.message, "error"); }
+  });
+
+  // Submit do modal Editar Marca
+  document.getElementById("formEditMarca").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id     = document.getElementById("editMarcaId").value;
+    const nome   = document.getElementById("editMarcaNome").value.trim();
+    const margem = parseFloat(document.getElementById("editMarcaMargem").value);
+    if (!nome) { showToast("Nome não pode ser vazio.", "error"); return; }
+    if (isNaN(margem) || margem < 0) { showToast("Margem inválida.", "error"); return; }
+    try {
+      await updateMarca(id, { nome, margem_padrao: margem });
+      allMarcas = await fetchMarcas();
+      populateMarcaSelects();
+      renderMgrMarcas();
+      closeModal("modalEditMarca");
+      showToast(`Marca atualizada para "${nome}".`);
+    } catch (err) { showToast(err.message, "error"); }
+  });
+
+  // Submit do modal Editar Categoria
+  document.getElementById("formEditCat").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id   = document.getElementById("editCatId").value;
+    const nome = document.getElementById("editCatNome").value.trim();
+    if (!nome) { showToast("Nome não pode ser vazio.", "error"); return; }
+    try {
+      await updateCategoria(id, nome);
+      allCategorias = await fetchCategorias();
+      populateCatSelects();
+      renderMgrCategorias();
+      closeModal("modalEditCat");
+      showToast(`Categoria atualizada para "${nome}".`);
     } catch (err) { showToast(err.message, "error"); }
   });
 }
