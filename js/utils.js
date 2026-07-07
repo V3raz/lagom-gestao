@@ -2,6 +2,21 @@
 export const brl = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v ?? 0);
 
+/** Converte texto em formato brasileiro (1.234,56) para número.
+ *  Com vírgula: pontos são separador de milhar e a vírgula é o decimal.
+ *  Sem vírgula: pontos são separador de milhar (ex.: "1.520" → 1520). */
+export function parseValorBR(str) {
+  if (str == null) return NaN;
+  let s = String(str).trim().replace(/[R$\s]/g, "");
+  if (!s) return NaN;
+  if (s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    s = s.replace(/\./g, "");
+  }
+  return parseFloat(s);
+}
+
 /** Formata data BR curta */
 export const dataBR = (iso) =>
   new Date(iso).toLocaleDateString("pt-BR");

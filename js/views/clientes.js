@@ -1,5 +1,5 @@
 import { fetchClientes, insertCliente, deleteCliente, fetchPedidosCliente, abaterDebito } from "../db/clientes.js";
-import { brl, dataBR, showToast } from "../utils.js";
+import { brl, dataBR, showToast, parseValorBR } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let allClientes = [];
@@ -208,8 +208,17 @@ async function handleListClick(e) {
   if (btnAbater) {
     const id     = btnAbater.dataset.id;
     const debito = parseFloat(btnAbater.dataset.debito);
-    const valor  = parseFloat(prompt(`Abater quanto do débito de ${brl(debito)}?`) ?? "");
-    if (!valor || valor <= 0 || isNaN(valor)) return;
+    const entrada = prompt(`Abater quanto do débito de ${brl(debito)}?`);
+    if (entrada == null) return; // cancelou
+    const valor = parseValorBR(entrada);
+    if (isNaN(valor) || valor <= 0) {
+      showToast("Valor inválido. Ex.: 1520 ou 1.520,00", "error");
+      return;
+    }
+    if (valor > debito) {
+      showToast(`Valor maior que o débito (${brl(debito)}).`, "error");
+      return;
+    }
     try {
       await abaterDebito(id, valor);
       showToast(`${brl(valor)} abatido do débito.`);
