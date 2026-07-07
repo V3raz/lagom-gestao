@@ -8,6 +8,7 @@ import * as Clientes   from "./views/clientes.js";
 import * as Caderninho from "./views/caderninho.js";
 import * as Ajuda      from "./views/ajuda.js";
 import { mostrarOnboardingSeNecessario, reabrirOnboarding } from "./onboarding.js";
+import { getSession, mostrarLogin, signOut } from "./auth.js";
 
 // Mapa de rotas
 const routes = {
@@ -87,10 +88,11 @@ function initTopbar() {
   );
 }
 
-// Arranca o app
-function init() {
+// Arranca o app (só é chamado depois de autenticado)
+function startApp() {
   initSidebar();
   initTopbar();
+  document.getElementById("btnLogout")?.addEventListener("click", signOut);
   // Navega diretamente — não depende de hashchange disparar
   navigate(normalizePath(window.location.hash));
   // Mostra onboarding na primeira visita
@@ -99,4 +101,14 @@ function init() {
   window.lagom = { tutorial: reabrirOnboarding };
 }
 
-init();
+// Verifica sessão: se logado, arranca o app; senão, mostra o login.
+async function boot() {
+  const session = await getSession();
+  if (session) {
+    startApp();
+  } else {
+    mostrarLogin(startApp);
+  }
+}
+
+boot();

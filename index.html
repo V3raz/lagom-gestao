@@ -10,6 +10,27 @@
 </head>
 <body>
 
+  <!-- ===== TELA DE LOGIN ===== -->
+  <div id="authScreen" class="auth-screen" hidden>
+    <div class="auth-card">
+      <img src="img/logo.svg" alt="Lagom Wear" class="auth-logo">
+      <h1 class="auth-title">Entrar</h1>
+      <p class="auth-sub">Acesse sua conta pra continuar</p>
+      <form id="authForm" class="auth-form" novalidate>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="authEmail" required autocomplete="username" placeholder="voce@email.com">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="authSenha" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <p id="authErro" class="auth-erro" hidden></p>
+        <button type="submit" id="authSubmit" class="btn btn-primary btn-full">Entrar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- ===== SIDEBAR ===== -->
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-logo">
@@ -56,6 +77,17 @@
         <span>Ajuda</span>
       </div>
     </nav>
+
+    <div class="sidebar-footer">
+      <button id="btnLogout" class="nav-item nav-logout" title="Sair da conta">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M8 17H4a1 1 0 01-1-1V4a1 1 0 011-1h4"/>
+          <path d="M13 14l4-4-4-4"/>
+          <path d="M17 10H8"/>
+        </svg>
+        <span>Sair</span>
+      </button>
+    </div>
   </aside>
 
   <!-- ===== TOPBAR ===== -->
