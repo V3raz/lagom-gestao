@@ -1,5 +1,5 @@
 import { fetchAnotacoes, insertAnotacao, updateAnotacao, deleteAnotacao } from "../db/anotacoes.js";
-import { dataBR, showToast } from "../utils.js";
+import { dataBR, esc, showToast } from "../utils.js";
 
 // ── Template ──────────────────────────────────────────────────
 export function renderView() {
@@ -77,15 +77,15 @@ async function loadAnotacoes() {
     el.innerHTML = lista.map(a => `
       <div class="anotacao-card" data-aid="${a.id}">
         <div class="anotacao-header">
-          <span class="anotacao-titulo">${a.titulo}</span>
+          <span class="anotacao-titulo">${esc(a.titulo)}</span>
           <span class="anotacao-data">${dataBR(a.created_at)}</span>
         </div>
-        <p class="anotacao-texto">${a.conteudo ?? ""}</p>
+        <p class="anotacao-texto">${esc(a.conteudo)}</p>
         <div class="anotacao-actions">
           <button class="btn-edit-anotacao btn btn-secondary btn-sm"
                   data-aid="${a.id}"
-                  data-titulo="${a.titulo}"
-                  data-texto="${(a.conteudo ?? '').replace(/"/g, '&quot;')}"
+                  data-titulo="${esc(a.titulo)}"
+                  data-texto="${esc(a.conteudo)}"
                   title="Editar">Editar</button>
           <button class="btn-rm-anotacao btn btn-sm" style="color:var(--danger)" data-aid="${a.id}" title="Excluir">Excluir</button>
         </div>

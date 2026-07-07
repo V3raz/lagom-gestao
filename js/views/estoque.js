@@ -2,7 +2,7 @@ import { fetchRoupas, reporEstoque, deleteRoupa, insertRoupa } from "../db/estoq
 import { fetchMarcas, insertMarca, updateMarca, deleteMarca } from "../db/marcas.js";
 import { fetchCategorias, insertCategoria, updateCategoria, deleteCategoria } from "../db/categorias.js";
 import { abrirScanner } from "../scanner.js";
-import { brl, gerarSKU, showToast, fileToDataUrl } from "../utils.js";
+import { brl, esc, gerarSKU, showToast, compressImage } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let allProducts   = [];
@@ -428,7 +428,7 @@ function populateMarcaSelects() {
     const isFilter = id === "filterMarca";
     const defaultOpt = isFilter ? '<option value="">Marca</option>' : '<option value="">Sem marca</option>';
     sel.innerHTML = defaultOpt + allMarcas.map(m =>
-      `<option value="${m.id}">${m.nome}</option>`
+      `<option value="${m.id}">${esc(m.nome)}</option>`
     ).join("");
   });
 }
@@ -444,7 +444,7 @@ function populateCatSelects() {
       ? '<option value="">Categoria</option>'
       : '<option value="">Selecionar...</option>';
     sel.innerHTML = defaultOpt + allCategorias.map(c =>
-      `<option value="${c.id}">${c.nome}</option>`
+      `<option value="${c.id}">${esc(c.nome)}</option>`
     ).join("");
     // Se não há categorias no banco, mantém fallback hardcoded no filtro
     if (allCategorias.length === 0 && isFilter) {
@@ -504,29 +504,29 @@ function buildCard(p) {
   card.dataset.qty = p.quantidade;
 
   const img = p.imagem_url
-    ? `<img src="${p.imagem_url}" alt="${p.nome}" class="pcard-img" loading="lazy" onerror="this.outerHTML='<div class=\\'pcard-img pcard-img--empty\\'>👗</div>'">`
+    ? `<img src="${esc(p.imagem_url)}" alt="${esc(p.nome)}" class="pcard-img" loading="lazy" onerror="this.outerHTML='<div class=\\'pcard-img pcard-img--empty\\'>👗</div>'">`
     : `<div class="pcard-img pcard-img--empty">👗</div>`;
 
   // Marca badge (Feature 1)
   const marcaInfo = p.marcas
-    ? `<span class="pcard-marca">${p.marcas.nome} — ${p.marcas.margem_padrao}%</span>`
+    ? `<span class="pcard-marca">${esc(p.marcas.nome)} — ${p.marcas.margem_padrao}%</span>`
     : "";
 
   card.innerHTML = `
     ${img}
     ${unavail ? `<span class="unavail-badge">Indisponível</span>` : ""}
     <div class="pcard-body">
-      <span class="pcard-sku">${p.sku || "—"}</span>
-      <span class="pcard-name" title="${p.nome}">${p.nome}</span>
+      <span class="pcard-sku">${esc(p.sku) || "—"}</span>
+      <span class="pcard-name" title="${esc(p.nome)}">${esc(p.nome)}</span>
       ${marcaInfo}
-      <span class="pcard-meta">TAM: ${p.tamanho} &nbsp;|&nbsp; COR: ${p.cor}</span>
+      <span class="pcard-meta">TAM: ${esc(p.tamanho)} &nbsp;|&nbsp; COR: ${esc(p.cor)}</span>
       <div class="pcard-row">
         <span class="pcard-qty ${unavail ? "pcard-qty--zero" : ""}">QTD: ${p.quantidade}</span>
         <span class="pcard-price">${brl(p.preco)}</span>
       </div>
     </div>
     <div class="pcard-footer">
-      <button class="pcard-btn btn-repor" data-id="${p.id}" data-nome="${p.nome}" data-qty="${p.quantidade}">+ Repor</button>
+      <button class="pcard-btn btn-repor" data-id="${p.id}" data-nome="${esc(p.nome)}" data-qty="${p.quantidade}">+ Repor</button>
       <button class="pcard-btn pcard-btn--danger btn-deletar" data-id="${p.id}">🗑 Deletar</button>
     </div>`;
   return card;
@@ -694,10 +694,10 @@ function renderMgrMarcas() {
   }
   el.innerHTML = allMarcas.map(m => `
     <div class="mgr-item">
-      <span class="mgr-item-nome">${m.nome}</span>
+      <span class="mgr-item-nome">${esc(m.nome)}</span>
       <span class="mgr-item-sub">Margem: ${m.margem_padrao}%</span>
-      <button class="mgr-item-edit" data-mid="${m.id}" data-nome="${m.nome}" data-margem="${m.margem_padrao}" title="Editar">✏️</button>
-      <button class="mgr-item-del" data-mid="${m.id}" data-nome="${m.nome}" title="Deletar">🗑</button>
+      <button class="mgr-item-edit" data-mid="${m.id}" data-nome="${esc(m.nome)}" data-margem="${m.margem_padrao}" title="Editar">✏️</button>
+      <button class="mgr-item-del" data-mid="${m.id}" data-nome="${esc(m.nome)}" title="Deletar">🗑</button>
     </div>`).join("");
 }
 
@@ -710,9 +710,9 @@ function renderMgrCategorias() {
   }
   el.innerHTML = allCategorias.map(c => `
     <div class="mgr-item">
-      <span class="mgr-item-nome">${c.nome}</span>
-      <button class="mgr-item-edit" data-cid="${c.id}" data-nome="${c.nome}" title="Editar">✏️</button>
-      <button class="mgr-item-del" data-cid="${c.id}" data-nome="${c.nome}" title="Deletar">🗑</button>
+      <span class="mgr-item-nome">${esc(c.nome)}</span>
+      <button class="mgr-item-edit" data-cid="${c.id}" data-nome="${esc(c.nome)}" title="Editar">✏️</button>
+      <button class="mgr-item-del" data-cid="${c.id}" data-nome="${esc(c.nome)}" title="Deletar">🗑</button>
     </div>`).join("");
 }
 
@@ -771,7 +771,15 @@ async function handleSubmitProduto(e) {
 
   let imagem_url = document.getElementById("fImgUrl").value.trim() || null;
   const file = document.getElementById("fImgFile").files[0];
-  if (file) imagem_url = await fileToDataUrl(file);
+  if (file) {
+    try {
+      // Comprime antes de salvar: foto de 5 MB vira ~80 KB
+      imagem_url = await compressImage(file);
+    } catch {
+      showToast("Não foi possível ler a imagem. Produto será salvo sem foto.", "error");
+      imagem_url = null;
+    }
+  }
 
   // Resolve categoria: pode ser UUID (da tabela) ou nome direto (fallback)
   const catVal = document.getElementById("fCategoria").value;

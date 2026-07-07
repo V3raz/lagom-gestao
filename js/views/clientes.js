@@ -1,5 +1,5 @@
 import { fetchClientes, insertCliente, deleteCliente, fetchPedidosCliente, abaterDebito } from "../db/clientes.js";
-import { brl, dataBR, showToast, parseValorBR } from "../utils.js";
+import { brl, dataBR, esc, showToast, parseValorBR } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let allClientes = [];
@@ -143,18 +143,18 @@ function renderList(clientes) {
   el.innerHTML = clientes.map(c => `
     <div class="cliente-card" data-id="${c.id}">
       <div class="cliente-info">
-        <span class="cliente-nome">${c.nome}</span>
-        <span class="cliente-tel">${c.telefone ?? "—"}</span>
+        <span class="cliente-nome">${esc(c.nome)}</span>
+        <span class="cliente-tel">${esc(c.telefone) || "—"}</span>
       </div>
       <div class="cliente-meta">
         ${c.debito_pendente > 0
           ? `<span class="debito-badge">Débito: ${brl(c.debito_pendente)}</span>`
           : `<span class="debito-ok">Sem débito</span>`}
-        <button class="btn btn-secondary btn-sm btn-historico" data-id="${c.id}" data-nome="${c.nome}">Histórico</button>
+        <button class="btn btn-secondary btn-sm btn-historico" data-id="${c.id}" data-nome="${esc(c.nome)}">Histórico</button>
         ${c.debito_pendente > 0
           ? `<button class="btn btn-primary btn-sm btn-abater" data-id="${c.id}" data-debito="${c.debito_pendente}">Abater</button>`
           : ""}
-        <button class="btn btn-sm btn-deletar-cliente" data-id="${c.id}" data-nome="${c.nome}" style="color:var(--danger)" title="Remover cliente">🗑</button>
+        <button class="btn btn-sm btn-deletar-cliente" data-id="${c.id}" data-nome="${esc(c.nome)}" style="color:var(--danger)" title="Remover cliente">🗑</button>
       </div>
     </div>`).join("");
 }

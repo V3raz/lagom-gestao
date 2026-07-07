@@ -5,6 +5,8 @@ const T = "clientes";
 /** Busca clientes por nome ou telefone */
 export async function fetchClientes(search = "") {
   let q = db.from(T).select("*").order("nome");
+  // Remove caracteres que quebram a sintaxe do filtro .or() do Supabase
+  search = search.replace(/[,()"']/g, "").trim();
   if (search) q = q.or(`nome.ilike.%${search}%,telefone.ilike.%${search}%`);
   const { data, error } = await q;
   if (error) throw error;

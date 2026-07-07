@@ -72,9 +72,11 @@ export async function addItemPedido(pedidoId, roupa) {
 export async function removeItemPedido(itemId, roupaId, quantidade) {
   const { error } = await db.from("itens_pedido").delete().eq("id", itemId);
   if (error) throw error;
-  // Devolve ao estoque
+  // Devolve ao estoque — se falhar, avisa (senão o estoque fica errado em silêncio)
   const { data: roupa, error: e2 } = await db.from("roupas").select("quantidade").eq("id", roupaId).single();
-  if (!e2) await db.from("roupas").update({ quantidade: roupa.quantidade + quantidade }).eq("id", roupaId);
+  if (e2) throw new Error("Item removido, mas o estoque não foi devolvido. Confira a quantidade da peça.");
+  const { error: e3 } = await db.from("roupas").update({ quantidade: roupa.quantidade + quantidade }).eq("id", roupaId);
+  if (e3) throw new Error("Item removido, mas o estoque não foi devolvido. Confira a quantidade da peça.");
 }
 
 /** Atualiza desconto do pedido */
@@ -87,10 +89,15 @@ export async function updateDesconto(pedidoId, descPct) {
 
 /** Finaliza pedido: salva total, forma de pagamento, timestamp */
 export async function finalizarPedido(pedidoId, { formaPagamento, total, clienteId }) {
+  // "Anotado" sem cliente não tem onde registrar a dívida — bloqueia
+  if (formaPagamento === "anotado" && !clienteId) {
+    throw new Error("Venda 'Anotado' precisa de uma cliente cadastrada no pedido.");
+  }
   const { data, error } = await db
     .from("pedidos")
     .update({ status: "finalizado", forma_pagamento: formaPagamento, total, finalizado_at: new Date().toISOString() })
     .eq("id", pedidoId)
+    .eq("status", "ativo") // só finaliza se ainda ativo — evita finalizar 2x (e duplicar débito)
     .select()
     .single();
   if (error) throw error;

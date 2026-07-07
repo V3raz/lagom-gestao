@@ -9,6 +9,7 @@ export async function fetchRoupas({ search = "", tamanho = "", cor = "", categor
   if (cor)       q = q.eq("cor", cor);
   if (categoria) q = q.eq("categoria", categoria);
   if (marca_id)  q = q.eq("marca_id", marca_id);
+  search = search.replace(/[,()"']/g, "").trim(); // caracteres quebram o filtro .or()
   if (search)    q = q.or(`nome.ilike.%${search}%,sku.ilike.%${search}%`);
   const { data, error } = await q;
   if (error) throw error;

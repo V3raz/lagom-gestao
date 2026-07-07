@@ -5,7 +5,7 @@ import {
 import { fetchRoupas } from "../db/estoque.js";
 import { fetchClientes } from "../db/clientes.js";
 import { abrirScanner } from "../scanner.js";
-import { brl, showToast } from "../utils.js";
+import { brl, esc, showToast } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let pedidos       = [];
@@ -104,7 +104,7 @@ export async function initView() {
       const clientes = await fetchClientes(e.target.value);
       const sug = document.getElementById("clienteSuggestions");
       sug.innerHTML = clientes.slice(0, 5).map(c =>
-        `<div class="suggestion-item" data-id="${c.id}" data-nome="${c.nome}">${c.nome} — ${c.telefone || "sem tel."}</div>`
+        `<div class="suggestion-item" data-id="${c.id}" data-nome="${esc(c.nome)}">${esc(c.nome)} — ${esc(c.telefone) || "sem tel."}</div>`
       ).join("");
     }, 300);
   });
@@ -162,7 +162,7 @@ function renderPedidosList() {
     const isAtivo = pedidoAtivo?.id === p.id;
     const label   = p.tipo === "balcao"   ? "Venda Balcão"
                   : p.tipo === "expresso" ? "Venda Expressa"
-                  : p.clientes?.nome || "Cliente";
+                  : esc(p.clientes?.nome) || "Cliente";
     const nItens  = p.itens_pedido?.length ?? 0;
     const tempo   = timeSince(p.created_at);
     return `
@@ -300,7 +300,8 @@ function renderPanelRight() {
 
   // Desconto
   document.getElementById("btnAplicarDesc").addEventListener("click", async () => {
-    const pct = parseFloat(document.getElementById("descontoInput").value) || 0;
+    let pct = parseFloat(document.getElementById("descontoInput").value) || 0;
+    pct = Math.min(100, Math.max(0, pct)); // desconto só entre 0 e 100%
     try {
       pedidoAtivo = await updateDesconto(pedidoAtivo.id, pct);
       renderPanelRight();
@@ -326,16 +327,16 @@ function renderPanelRight() {
 function buildCatalogCard(r) {
   const esgotado = r.quantidade <= 0;
   const img = r.imagem_url
-    ? `<img src="${r.imagem_url}" alt="${r.nome}" class="ccard-img" loading="lazy" onerror="this.style.display='none'">`
+    ? `<img src="${esc(r.imagem_url)}" alt="${esc(r.nome)}" class="ccard-img" loading="lazy" onerror="this.style.display='none'">`
     : `<div class="ccard-img ccard-img--empty">👗</div>`;
   return `
     <div class="ccard ${esgotado ? "ccard--esgotado" : ""}" data-rid="${r.id}">
       ${img}
       ${esgotado ? `<span class="unavail-badge unavail-badge--sm">Esgotada</span>` : ""}
       <div class="ccard-body">
-        <span class="ccard-sku">${r.sku}</span>
-        <span class="ccard-name">${r.nome}</span>
-        <span class="ccard-meta">TAM: ${r.tamanho} | COR: ${r.cor} - QTD: ${r.quantidade}</span>
+        <span class="ccard-sku">${esc(r.sku)}</span>
+        <span class="ccard-name">${esc(r.nome)}</span>
+        <span class="ccard-meta">TAM: ${esc(r.tamanho)} | COR: ${esc(r.cor)} - QTD: ${r.quantidade}</span>
         <span class="ccard-price">${brl(r.preco)}</span>
       </div>
     </div>`;
@@ -345,10 +346,10 @@ function buildItemRow(item) {
   const r = item.roupas;
   return `
     <div class="item-row">
-      ${r.imagem_url ? `<img src="${r.imagem_url}" class="item-thumb" alt="${r.nome}">` : `<div class="item-thumb item-thumb--empty">👗</div>`}
+      ${r.imagem_url ? `<img src="${esc(r.imagem_url)}" class="item-thumb" alt="${esc(r.nome)}">` : `<div class="item-thumb item-thumb--empty">👗</div>`}
       <div class="item-info">
-        <span class="item-name">${r.nome}</span>
-        <span class="item-meta">TAM: ${r.tamanho} | COR: ${r.cor}</span>
+        <span class="item-name">${esc(r.nome)}</span>
+        <span class="item-meta">TAM: ${esc(r.tamanho)} | COR: ${esc(r.cor)}</span>
       </div>
       <div class="item-qty-price">
         <span class="item-qty">${item.quantidade}x</span>
@@ -363,14 +364,8 @@ function filterCatalog(query) {
   const filtered = q
     ? catalogRoupas.filter(r => r.sku?.toLowerCase().includes(q) || r.nome.toLowerCase().includes(q))
     : catalogRoupas.slice(0, 20);
+  // A delegação de clique no #catalogGrid (renderPanelRight) já cobre os novos cards
   document.getElementById("catalogGrid").innerHTML = filtered.map(buildCatalogCard).join("");
-  document.getElementById("catalogGrid").querySelectorAll(".ccard[data-rid]").forEach(card =>
-    card.addEventListener("click", () => {
-      if (card.classList.contains("ccard--esgotado")) return;
-      const roupa = catalogRoupas.find(r => r.id === card.dataset.rid);
-      if (roupa) requestAddItem(roupa);
-    })
-  );
 }
 
 function requestAddItem(roupa) {
@@ -413,11 +408,18 @@ async function handleFinalizar() {
   const pagBtn = document.querySelector(".btn-pag--ativo");
   if (!pagBtn) { showToast("Selecione a forma de pagamento.", "error"); return; }
   if (!itensAtivo.length) { showToast("Pedido sem itens.", "error"); return; }
+  // "Anotado" exige cliente cadastrada — senão a dívida não é registrada em lugar nenhum
+  if (pagBtn.dataset.pag === "anotado" && !pedidoAtivo.cliente_id) {
+    showToast("Venda 'Anotado' só funciona com cliente cadastrada. Crie o pedido como 'Cliente Cadastrado'.", "error");
+    return;
+  }
 
   const subtotal = itensAtivo.reduce((s, i) => s + i.preco_unitario * i.quantidade, 0);
   const descPct  = pedidoAtivo.desconto_pct ?? 0;
   const total    = subtotal * (1 - descPct / 100);
 
+  const btn = document.getElementById("btnFinalizar");
+  btn.disabled = true; btn.textContent = "Finalizando...";
   try {
     await finalizarPedido(pedidoAtivo.id, {
       formaPagamento: pagBtn.dataset.pag,
@@ -430,7 +432,11 @@ async function handleFinalizar() {
     renderPedidosList();
     renderPanelRight();
     showToast(`Venda finalizada! Total: ${brl(total)}`);
-  } catch (err) { showToast(err.message, "error"); }
+  } catch (err) {
+    showToast(err.message, "error");
+    const b = document.getElementById("btnFinalizar");
+    if (b) { b.disabled = false; b.textContent = "✓ Finalizar Venda"; }
+  }
 }
 
 async function handleCancelarPedido() {
