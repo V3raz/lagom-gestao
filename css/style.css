@@ -134,6 +134,10 @@ body {
 
 .nav-item:hover { background: var(--accent-bg); color: var(--text); }
 
+/* O atributo hidden perde para o display:flex acima — força aqui
+   (usado pra esconder o "Sair" quando o app roda sem login) */
+.nav-item[hidden] { display: none; }
+
 .nav-item--active {
   background: var(--accent-bg);
   color: var(--text);
@@ -571,11 +575,10 @@ body {
 .pcard-btn--danger:hover { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 
 /* ============================================================
-   LAYOUT DOIS PAINÉIS (Vendas + Clientes)
+   LAYOUT DOIS PAINÉIS (Vendas)
    ============================================================ */
 
-.view-vendas,
-.view-clientes {
+.view-vendas {
   display: grid;
   grid-template-columns: 300px 1fr;
   height: calc(100vh - var(--topbar-h));
@@ -813,26 +816,54 @@ body {
    VIEW: CLIENTES
    ============================================================ */
 
-.clientes-list { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; overflow-y: auto; }
+.view-clientes {
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
 
-.cliente-item {
-  padding: 0.7rem 0.85rem;
+.clientes-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.cliente-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.8rem 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  cursor: pointer;
   transition: all var(--trans);
 }
-.cliente-item:hover { border-color: var(--accent); background: var(--accent-bg); }
-.cliente-item--ativo { background: var(--accent); border-color: var(--accent); }
-.cliente-item--ativo .cliente-item-nome,
-.cliente-item--ativo .cliente-item-id,
-.cliente-item--ativo .cliente-item-tel { color: #fff; }
+.cliente-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
 
-.cliente-item-info { display: flex; flex-direction: column; gap: 0.15rem; }
-.cliente-item-nome { font-size: 0.95rem; font-weight: 600; }
-.cliente-item-id   { font-size: 0.72rem; color: var(--text-sec); }
-.cliente-item-tel  { font-size: 0.78rem; color: var(--text-muted); }
+.cliente-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.cliente-nome { font-size: 0.95rem; font-weight: 600; }
+.cliente-tel  { font-size: 0.78rem; color: var(--text-muted); }
+
+.cliente-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.debito-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-bg);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.debito-ok {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 
 /* Perfil do cliente */
 .cliente-perfil { max-width: 700px; }
@@ -924,10 +955,11 @@ body {
 .anotacao-titulo { font-size: 0.95rem; font-weight: 700; }
 .anotacao-data   { font-size: 0.72rem; color: var(--text-muted); }
 .anotacao-texto  { font-size: 0.875rem; color: var(--text-sec); line-height: 1.5; white-space: pre-wrap; }
-.btn-rm-anotacao {
-  position: absolute; top: 0.75rem; right: 0.75rem;
-  background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.75rem;
-  padding: 0.2rem 0.35rem; border-radius: 4px; transition: all var(--trans);
+.anotacao-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 .btn-rm-anotacao:hover { background: var(--danger-bg); color: var(--danger); }
 
@@ -1582,14 +1614,16 @@ body {
   .view-estoque { padding: 1rem; padding-bottom: 5rem; }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-  /* --- Vendas / Clientes: empilhados --- */
-  .view-vendas,
-  .view-clientes {
+  /* --- Vendas: painéis empilhados --- */
+  .view-vendas {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
     height: auto;
     overflow: visible;
   }
+
+  /* --- Clientes --- */
+  .view-clientes { padding: 1rem; padding-bottom: 5rem; }
   .panel-left {
     max-height: 45vh;
     overflow-y: auto;
