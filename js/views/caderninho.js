@@ -1,5 +1,5 @@
 import { fetchAnotacoes, insertAnotacao, updateAnotacao, deleteAnotacao } from "../db/anotacoes.js";
-import { dataBR, esc, showToast } from "../utils.js";
+import { dataBR, escapeAttr, escapeHtml, showToast } from "../utils.js";
 
 // ── Template ──────────────────────────────────────────────────
 export function renderView() {
@@ -65,9 +65,11 @@ export async function initView() {
 
 async function loadAnotacoes() {
   const el = document.getElementById("anotacoesList");
+  if (!el) return;
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
     const lista = await fetchAnotacoes();
+    if (!document.getElementById("anotacoesList")) return;
 
     if (!lista.length) {
       el.innerHTML = `<p class="empty-state">Nenhuma anotação ainda. Clique em "+ Nova Anotação".</p>`;
@@ -75,19 +77,19 @@ async function loadAnotacoes() {
     }
 
     el.innerHTML = lista.map(a => `
-      <div class="anotacao-card" data-aid="${a.id}">
+      <div class="anotacao-card" data-aid="${escapeAttr(a.id)}">
         <div class="anotacao-header">
-          <span class="anotacao-titulo">${esc(a.titulo)}</span>
+          <span class="anotacao-titulo">${escapeHtml(a.titulo)}</span>
           <span class="anotacao-data">${dataBR(a.created_at)}</span>
         </div>
-        <p class="anotacao-texto">${esc(a.conteudo)}</p>
+        <p class="anotacao-texto">${escapeHtml(a.conteudo ?? "")}</p>
         <div class="anotacao-actions">
           <button class="btn-edit-anotacao btn btn-secondary btn-sm"
-                  data-aid="${a.id}"
-                  data-titulo="${esc(a.titulo)}"
-                  data-texto="${esc(a.conteudo)}"
+                  data-aid="${escapeAttr(a.id)}"
+                  data-titulo="${escapeAttr(a.titulo)}"
+                  data-texto="${escapeAttr(a.conteudo ?? "")}"
                   title="Editar">Editar</button>
-          <button class="btn-rm-anotacao btn btn-sm" style="color:var(--danger)" data-aid="${a.id}" title="Excluir">Excluir</button>
+          <button class="btn-rm-anotacao btn btn-sm" style="color:var(--danger)" data-aid="${escapeAttr(a.id)}" title="Excluir">Excluir</button>
         </div>
       </div>`).join("");
 
@@ -120,7 +122,9 @@ async function loadAnotacoes() {
 
   } catch (err) {
     console.error(err);
-    el.innerHTML = `<p class="empty-state">Erro ao carregar anotações.</p>`;
+    if (document.getElementById("anotacoesList")) {
+      el.innerHTML = `<p class="empty-state">Erro ao carregar anotações.</p>`;
+    }
     showToast(err.message, "error");
   }
 }

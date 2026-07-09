@@ -5,7 +5,7 @@ import {
 import { fetchRoupas } from "../db/estoque.js";
 import { fetchClientes } from "../db/clientes.js";
 import { abrirScanner } from "../scanner.js";
-import { brl, esc, showToast } from "../utils.js";
+import { brl, escapeAttr, escapeHtml, expandProductsWithVariants, productMatchesSearch, showToast } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let pedidos       = [];
@@ -13,6 +13,9 @@ let pedidoAtivo   = null;   // objeto pedido selecionado
 let itensAtivo    = [];     // itens do pedido ativo
 let catalogRoupas = [];     // catálogo de roupas (para bipar/buscar)
 let pendingItem   = null;   // item aguardando confirmação de adição
+let lastAutoAddCode = "";
+let isAddingItem = false;
+let currentProductSearch = "";
 
 // ── Template ──────────────────────────────────────────────────
 export function renderView() {
@@ -84,6 +87,7 @@ export function renderView() {
 // ── Init ──────────────────────────────────────────────────────
 export async function initView() {
   await Promise.all([loadPedidos(), loadCatalog()]);
+  await selectPedidoReabertoSeNecessario();
 
   document.getElementById("btnNovoPedido").addEventListener("click", () => {
     document.getElementById("novoPedidoTipo").value = "balcao";
@@ -104,7 +108,7 @@ export async function initView() {
       const clientes = await fetchClientes(e.target.value);
       const sug = document.getElementById("clienteSuggestions");
       sug.innerHTML = clientes.slice(0, 5).map(c =>
-        `<div class="suggestion-item" data-id="${c.id}" data-nome="${esc(c.nome)}">${esc(c.nome)} — ${esc(c.telefone) || "sem tel."}</div>`
+        `<div class="suggestion-item" data-id="${escapeAttr(c.id)}" data-nome="${escapeAttr(c.nome)}">${escapeHtml(c.nome)} — ${escapeHtml(c.telefone || "sem tel.")}</div>`
       ).join("");
     }, 300);
   });
@@ -121,6 +125,7 @@ export async function initView() {
   document.getElementById("btnConfirmarItem").addEventListener("click", handleConfirmarItem);
   document.getElementById("btnCancelarItem").addEventListener("click", () => {
     pendingItem = null;
+    lastAutoAddCode = "";
     document.getElementById("modalConfirmItem").hidden = true;
   });
 
@@ -133,6 +138,15 @@ export async function initView() {
       if (e.target.id === id) document.getElementById(id).hidden = true;
     });
   });
+}
+
+async function selectPedidoReabertoSeNecessario() {
+  const pedidoId = sessionStorage.getItem("lagom_editar_pedido_id");
+  if (!pedidoId) return;
+  sessionStorage.removeItem("lagom_editar_pedido_id");
+  if (pedidos.some(p => p.id === pedidoId)) {
+    await selectPedido(pedidoId);
+  }
 }
 
 // ── Funções ───────────────────────────────────────────────────
@@ -154,6 +168,7 @@ async function loadCatalog() {
 
 function renderPedidosList() {
   const el = document.getElementById("pedidosList");
+  if (!el) return;
   if (!pedidos.length) {
     el.innerHTML = `<p class="empty-state" style="padding:1rem">Nenhum pedido ativo.</p>`;
     return;
@@ -162,15 +177,15 @@ function renderPedidosList() {
     const isAtivo = pedidoAtivo?.id === p.id;
     const label   = p.tipo === "balcao"   ? "Venda Balcão"
                   : p.tipo === "expresso" ? "Venda Expressa"
-                  : esc(p.clientes?.nome) || "Cliente";
-    const nItens  = p.itens_pedido?.length ?? 0;
+                  : p.clientes?.nome || "Cliente";
+    const nItens  = getPedidoItemCount(p);
     const tempo   = timeSince(p.created_at);
     return `
-      <div class="pedido-item ${isAtivo ? "pedido-item--ativo" : ""}" data-pid="${p.id}">
+      <div class="pedido-item ${isAtivo ? "pedido-item--ativo" : ""}" data-pid="${escapeAttr(p.id)}">
         <div class="pedido-item-icon">📋</div>
         <div class="pedido-item-info">
-          <span class="pedido-item-title">Pedido ${isAtivo ? "ATIVO " : ""}#${p.numero} - ${label}</span>
-          <span class="pedido-item-meta">Aberto: ${tempo} &nbsp;·&nbsp; ${nItens} item(s)</span>
+          <span class="pedido-item-title">Pedido ${isAtivo ? "ATIVO " : ""}#${escapeHtml(p.numero)} - ${escapeHtml(label)}</span>
+          <span class="pedido-item-meta">Aberto: ${escapeHtml(tempo)} &nbsp;·&nbsp; ${escapeHtml(nItens)} item(s)</span>
           <span class="pedido-item-valor">${brl(p.total)}</span>
         </div>
       </div>`;
@@ -191,12 +206,14 @@ async function selectPedido(id) {
 
 function renderPanelRight() {
   const panel = document.getElementById("panelRight");
+  if (!panel) return;
   if (!pedidoAtivo) {
     panel.innerHTML = `<div class="no-pedido"><span>Selecione ou crie um pedido</span></div>`;
     return;
   }
 
   const subtotal = itensAtivo.reduce((s, i) => s + i.preco_unitario * i.quantidade, 0);
+  const itemCount = getActiveItemCount();
   const descPct  = pedidoAtivo.desconto_pct ?? 0;
   const descVal  = subtotal * (descPct / 100);
   const total    = subtotal - descVal;
@@ -205,24 +222,40 @@ function renderPanelRight() {
     <div class="pedido-detail">
       <h2 class="panel-title">Detalhes do Pedido Ativo #${pedidoAtivo.numero}</h2>
 
-      <!-- Busca de produto -->
-      <div class="bipar-wrap" style="gap:0.4rem">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="1" y="4" width="3" height="16"/><rect x="6" y="4" width="1.5" height="16"/>
-          <rect x="10" y="4" width="3" height="16"/><rect x="15.5" y="4" width="1.5" height="16"/>
-          <rect x="19" y="4" width="3" height="16"/>
-        </svg>
-        <input type="text" id="biparInput" class="bipar-input" placeholder="Bipar Código ou Digitar SKU (ex: LW-1001)">
-        <button type="button" id="btnScanVendas" class="btn-camera" title="Escanear com câmera">📷</button>
-      </div>
+      <div class="sales-products-panel">
+        <div class="sales-input-stack">
+          <div class="bipar-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="3" height="16"/><rect x="6" y="4" width="1.5" height="16"/>
+              <rect x="10" y="4" width="3" height="16"/><rect x="15.5" y="4" width="1.5" height="16"/>
+              <rect x="19" y="4" width="3" height="16"/>
+            </svg>
+            <input type="text" id="biparInput" class="bipar-input" placeholder="Bipar código ou SKU e apertar Enter">
+            <button type="button" id="btnScanVendas" class="btn-camera" title="Escanear com câmera">📷</button>
+          </div>
+          <div class="product-search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input type="text" id="productSearchInput" class="bipar-input" placeholder="Pesquisar produto por nome, cor, tamanho ou marca" value="${escapeAttr(currentProductSearch)}">
+            ${currentProductSearch ? `<button type="button" id="btnClearProductSearch" class="btn-clear-search" title="Limpar pesquisa">✕</button>` : ""}
+          </div>
+        </div>
 
-      <!-- Grid do catálogo -->
-      <div id="catalogGrid" class="catalog-grid">
-        ${catalogRoupas.slice(0, 20).map(r => buildCatalogCard(r)).join("")}
+        <div id="catalogGrid" class="catalog-grid">
+          ${buildCatalogResultsForQuery(currentProductSearch)}
+        </div>
       </div>
 
       <!-- Itens do pedido + totais -->
       <div class="pedido-sidebar">
+        <div class="pedido-sidebar-head">
+          <div>
+            <span class="pedido-sidebar-label">Itens no pedido</span>
+            <strong>${escapeHtml(itemCount)} ${itemCount === 1 ? "item" : "itens"}</strong>
+          </div>
+          <span class="pedido-sidebar-total">${brl(total)}</span>
+        </div>
         <div id="itensList" class="itens-list">
           ${itensAtivo.length
             ? itensAtivo.map(buildItemRow).join("")
@@ -251,27 +284,34 @@ function renderPanelRight() {
       </div>
     </div>`;
 
-  // Busca no catálogo
-  let biparTimer;
-  document.getElementById("biparInput").addEventListener("input", e => {
-    clearTimeout(biparTimer);
-    biparTimer = setTimeout(() => filterCatalog(e.target.value), 250);
+  let searchTimer;
+  document.getElementById("productSearchInput").addEventListener("input", e => {
+    currentProductSearch = e.target.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => handleProductSearchInput(currentProductSearch), 150);
+  });
+
+  document.getElementById("btnClearProductSearch")?.addEventListener("click", () => {
+    currentProductSearch = "";
+    renderPanelRight();
+    document.getElementById("productSearchInput")?.focus();
+  });
+
+  document.getElementById("biparInput").addEventListener("keydown", async e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    clearTimeout(searchTimer);
+    await tryAddExactCode(e.target.value, { direct: true });
   });
 
   // Scanner câmera no campo bipar (Feature 3)
   document.getElementById("btnScanVendas").addEventListener("click", () => {
-    abrirScanner(codigo => {
+    abrirScanner(async codigo => {
       const input = document.getElementById("biparInput");
       if (!input) return;
       input.value = codigo;
-      filterCatalog(codigo);
-      // Tenta auto-adicionar se encontrar produto único com código exato
-      const exato = catalogRoupas.find(r =>
-        r.sku?.toLowerCase() === codigo.toLowerCase() || r.barcode === codigo
-      );
-      if (exato && exato.quantidade > 0) {
-        requestAddItem(exato);
-      } else {
+      const added = await tryAddExactCode(codigo, { direct: true });
+      if (!added) {
         showToast(`Código: ${codigo} — selecione o produto.`);
       }
     });
@@ -293,6 +333,8 @@ function renderPanelRight() {
       await removeItemPedido(btn.dataset.iid, btn.dataset.rid, parseInt(btn.dataset.qty, 10));
       itensAtivo = itensAtivo.filter(i => i.id !== btn.dataset.iid);
       await refreshPedidoTotal();
+      syncActivePedidoSummary();
+      renderPedidosList();
       renderPanelRight();
       showToast("Item removido.");
     } catch (err) { showToast(err.message, "error"); }
@@ -324,19 +366,60 @@ function renderPanelRight() {
   document.getElementById("btnCancelarPedido").addEventListener("click", handleCancelarPedido);
 }
 
+function buildCatalogResults(roupas, message = "") {
+  if (!roupas.length) {
+    return `<p class="empty-state catalog-empty">Nenhum produto encontrado.</p>`;
+  }
+  const header = message
+    ? `<div class="catalog-results-note">${escapeHtml(message)}</div>`
+    : "";
+  return `${header}${roupas.map(r => buildCatalogCard(r)).join("")}`;
+}
+
+function getActiveItemCount() {
+  return itensAtivo.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0);
+}
+
+function getPedidoItemCount(pedido) {
+  return (pedido.itens_pedido ?? []).reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0);
+}
+
+function syncActivePedidoSummary() {
+  if (!pedidoAtivo) return;
+  const idx = pedidos.findIndex(p => p.id === pedidoAtivo.id);
+  if (idx === -1) return;
+  pedidos[idx] = {
+    ...pedidos[idx],
+    total: pedidoAtivo.total,
+    itens_pedido: itensAtivo.map(item => ({ id: item.id, quantidade: item.quantidade })),
+  };
+}
+
+function buildCatalogResultsForQuery(query) {
+  const q = String(query ?? "").trim();
+  if (!q) return buildCatalogResults(catalogRoupas.slice(0, 20));
+  const directMatches = catalogRoupas.filter(r => productMatchesSearch(r, q));
+  const withVariants = expandProductsWithVariants(directMatches, catalogRoupas);
+  const variantCount = withVariants.length - directMatches.length;
+  const message = variantCount > 0
+    ? `${directMatches.length} resultado(s) direto(s) + ${variantCount} variacoes do mesmo modelo.`
+    : "";
+  return buildCatalogResults(withVariants, message);
+}
+
 function buildCatalogCard(r) {
   const esgotado = r.quantidade <= 0;
   const img = r.imagem_url
-    ? `<img src="${esc(r.imagem_url)}" alt="${esc(r.nome)}" class="ccard-img" loading="lazy" onerror="this.style.display='none'">`
+    ? `<img src="${escapeAttr(r.imagem_url)}" alt="${escapeAttr(r.nome)}" class="ccard-img" loading="lazy" onerror="this.style.display='none'">`
     : `<div class="ccard-img ccard-img--empty">👗</div>`;
   return `
-    <div class="ccard ${esgotado ? "ccard--esgotado" : ""}" data-rid="${r.id}">
+    <div class="ccard ${esgotado ? "ccard--esgotado" : ""}" data-rid="${escapeAttr(r.id)}">
       ${img}
       ${esgotado ? `<span class="unavail-badge unavail-badge--sm">Esgotada</span>` : ""}
       <div class="ccard-body">
-        <span class="ccard-sku">${esc(r.sku)}</span>
-        <span class="ccard-name">${esc(r.nome)}</span>
-        <span class="ccard-meta">TAM: ${esc(r.tamanho)} | COR: ${esc(r.cor)} - QTD: ${r.quantidade}</span>
+        <span class="ccard-sku">${escapeHtml(r.barcode || r.sku)}</span>
+        <span class="ccard-name">${escapeHtml(r.nome)}</span>
+        <span class="ccard-meta">TAM: ${escapeHtml(r.tamanho)} | COR: ${escapeHtml(r.cor)} - QTD: ${escapeHtml(r.quantidade)}</span>
         <span class="ccard-price">${brl(r.preco)}</span>
       </div>
     </div>`;
@@ -346,29 +429,56 @@ function buildItemRow(item) {
   const r = item.roupas;
   return `
     <div class="item-row">
-      ${r.imagem_url ? `<img src="${esc(r.imagem_url)}" class="item-thumb" alt="${esc(r.nome)}">` : `<div class="item-thumb item-thumb--empty">👗</div>`}
+      ${r.imagem_url ? `<img src="${escapeAttr(r.imagem_url)}" class="item-thumb" alt="${escapeAttr(r.nome)}">` : `<div class="item-thumb item-thumb--empty">👗</div>`}
       <div class="item-info">
-        <span class="item-name">${esc(r.nome)}</span>
-        <span class="item-meta">TAM: ${esc(r.tamanho)} | COR: ${esc(r.cor)}</span>
+        <span class="item-name">${escapeHtml(r.nome)}</span>
+        <span class="item-meta">TAM: ${escapeHtml(r.tamanho)} | COR: ${escapeHtml(r.cor)}</span>
       </div>
       <div class="item-qty-price">
         <span class="item-qty">${item.quantidade}x</span>
         <span class="item-price">${brl(item.preco_unitario)}</span>
       </div>
-      <button class="btn-rm-item" data-iid="${item.id}" data-rid="${item.roupa_id}" data-qty="${item.quantidade}" title="Remover">✕</button>
+      <button class="btn-rm-item" data-iid="${escapeAttr(item.id)}" data-rid="${escapeAttr(item.roupa_id)}" data-qty="${escapeAttr(item.quantidade)}" title="Remover">✕</button>
     </div>`;
 }
 
 function filterCatalog(query) {
-  const q = query.toLowerCase();
-  const filtered = q
-    ? catalogRoupas.filter(r => r.sku?.toLowerCase().includes(q) || r.nome.toLowerCase().includes(q))
-    : catalogRoupas.slice(0, 20);
-  // A delegação de clique no #catalogGrid (renderPanelRight) já cobre os novos cards
-  document.getElementById("catalogGrid").innerHTML = filtered.map(buildCatalogCard).join("");
+  currentProductSearch = String(query ?? "");
+  document.getElementById("catalogGrid").innerHTML = buildCatalogResultsForQuery(currentProductSearch);
+}
+
+function handleProductSearchInput(query) {
+  filterCatalog(query);
+}
+
+function findExactProductByCode(code) {
+  const q = String(code ?? "").trim().toLowerCase();
+  if (!q) return null;
+  const exactMatches = catalogRoupas.filter(r =>
+    String(r.barcode ?? "").toLowerCase() === q ||
+    String(r.sku ?? "").toLowerCase() === q
+  );
+  return exactMatches.length === 1 ? exactMatches[0] : null;
+}
+
+async function tryAddExactCode(code, { direct = false } = {}) {
+  const q = String(code ?? "").trim();
+  if (!q || pendingItem || isAddingItem) return false;
+  const product = findExactProductByCode(q);
+  if (!product) return false;
+  if (!direct && q.length < 6) return false;
+  if (!direct && lastAutoAddCode === q) return false;
+  lastAutoAddCode = q;
+  if (direct) return addProductToActiveOrder(product, { clearScan: true, focusTarget: "scan" });
+  requestAddItem(product);
+  return true;
 }
 
 function requestAddItem(roupa) {
+  if ((roupa.quantidade ?? 0) <= 0) {
+    showToast("Produto sem estoque disponível.", "error");
+    return;
+  }
   pendingItem = roupa;
   document.getElementById("confirmItemText").textContent =
     `${roupa.nome} (Tam: ${roupa.tamanho} | Cor: ${roupa.cor}) — ${brl(roupa.preco)}`;
@@ -378,21 +488,49 @@ function requestAddItem(roupa) {
 async function handleConfirmarItem() {
   if (!pendingItem || !pedidoAtivo) return;
   document.getElementById("modalConfirmItem").hidden = true;
+  const product = pendingItem;
+  pendingItem = null;
+  await addProductToActiveOrder(product, { clearScan: false, focusTarget: "search" });
+}
+
+async function addProductToActiveOrder(product, { clearScan = true, focusTarget = "scan" } = {}) {
+  if (!product || !pedidoAtivo || isAddingItem) return false;
+  if ((product.quantidade ?? 0) <= 0) {
+    showToast("Produto sem estoque disponível.", "error");
+    return false;
+  }
+
+  isAddingItem = true;
+  const addedItemName = product.nome;
   try {
-    const item = await addItemPedido(pedidoAtivo.id, pendingItem);
+    const item = await addItemPedido(pedidoAtivo.id, product);
     const idx = itensAtivo.findIndex(i => i.id === item.id);
     if (idx !== -1) itensAtivo[idx] = item;
     else itensAtivo.push(item);
-    // Atualiza catálogo local
-    const ri = catalogRoupas.findIndex(r => r.id === pendingItem.id);
-    if (ri !== -1) catalogRoupas[ri].quantidade = Math.max(0, catalogRoupas[ri].quantidade - 1);
+
+    catalogRoupas = await fetchRoupas();
+    itensAtivo = await fetchItensPedido(pedidoAtivo.id);
     await refreshPedidoTotal();
+    syncActivePedidoSummary();
+    renderPedidosList();
     renderPanelRight();
-    showToast(`${pendingItem.nome} adicionado.`);
+    const scanInput = document.getElementById("biparInput");
+    const searchInput = document.getElementById("productSearchInput");
+    if (clearScan && scanInput) scanInput.value = "";
+    const focusInput = focusTarget === "search" ? searchInput : scanInput;
+    if (focusInput) {
+      focusInput.focus();
+      if (focusTarget === "scan") focusInput.select();
+    }
+    showToast(`${addedItemName} adicionado.`);
+    return true;
   } catch (err) {
     showToast(err.message, "error");
+    return false;
   } finally {
     pendingItem = null;
+    lastAutoAddCode = "";
+    isAddingItem = false;
   }
 }
 

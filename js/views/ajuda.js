@@ -26,7 +26,7 @@ export function renderView() {
         <a class="ajuda-indice-item" href="#sec-conceitos">📚 Conceitos Básicos</a>
         <a class="ajuda-indice-item" href="#sec-inicio">🚀 Primeiros Passos</a>
         <a class="ajuda-indice-item" href="#sec-estoque">📦 Estoque</a>
-        <a class="ajuda-indice-item" href="#sec-marcas">🏷️ Marcas e Categorias</a>
+        <a class="ajuda-indice-item" href="#sec-marcas">🏷️ Marcas, Categorias e Opções</a>
         <a class="ajuda-indice-item" href="#sec-vendas">🛒 Vendas</a>
         <a class="ajuda-indice-item" href="#sec-clientes">👤 Clientes</a>
         <a class="ajuda-indice-item" href="#sec-caderninho">📓 Caderninho</a>
@@ -180,8 +180,8 @@ export function renderView() {
                 <li><b>SKU</b> (opcional): código interno. Clica no ↻ pra gerar um automático (LW-0001, LW-0002...). Se você já tem um sistema de códigos próprio, pode digitar.</li>
                 <li><b>Categoria</b> (obrigatório): escolha da lista (Vestido, Camiseta...). Se faltar uma, clica no <b>+</b> ao lado pra criar na hora.</li>
                 <li><b>Marca</b> (opcional, mas recomendado): escolha da lista. Com a marca selecionada, você consegue usar o "Calcular" pra preço automático.</li>
-                <li><b>Tamanho</b> (obrigatório): PP, P, M, G, GG, XGG ou numeração (34, 36, 38...).</li>
-                <li><b>Cor</b> (obrigatório): escolha da lista de cores.</li>
+                <li><b>Tamanho</b> (obrigatório): Único, PP, P, M, G, GG, XGG ou numeração (34, 36, 38...).</li>
+                <li><b>Cor</b> (obrigatório): escolha da lista de cores, incluindo Off-white, Jeans e Vinho.</li>
                 <li><b>Preço de Custo</b> (opcional): quanto <b>você pagou</b> pela peça do fornecedor. Esse valor não aparece pra cliente, é só pra controle. Necessário se você quer usar o botão "Calcular" do preço de venda.</li>
                 <li><b>Preço de Venda</b> (obrigatório): quanto a cliente vai pagar. Pode digitar direto, ou — se preencheu marca + custo — clicar em <b>Calcular</b> pra aplicar a margem da marca automaticamente.</li>
                 <li><b>Quantidade</b> (obrigatório): quantas unidades dessa peça você tem agora. Se vai chegando aos poucos, começa com o que tem na mão e usa o "Repor" depois.</li>
@@ -232,11 +232,11 @@ export function renderView() {
           </p>
         </section>
 
-        <!-- ===== MARCAS E CATEGORIAS ===== -->
+        <!-- ===== MARCAS, CATEGORIAS E OPÇÕES ===== -->
         <section class="ajuda-sec" id="sec-marcas">
-          <h2 class="ajuda-sec-title">🏷️ Marcas e Categorias</h2>
+          <h2 class="ajuda-sec-title">🏷️ Marcas, Categorias e Opções</h2>
           <p class="ajuda-p">
-            Marcas e Categorias são listas que você configura <b>uma vez</b> e usa pra sempre. Ficam acessíveis em <b>Estoque → ⚙ Gerenciar</b>, no topo da tela.
+            Marcas, Categorias, Cores e Tamanhos são listas que você configura <b>uma vez</b> e usa pra sempre. Ficam acessíveis em <b>Estoque → ⚙ Gerenciar</b>, no topo da tela.
           </p>
 
           <h3 class="ajuda-sub">Por que separar Marca de Categoria?</h3>
@@ -283,9 +283,17 @@ export function renderView() {
             Categoria não tem margem nem nada — é só um rótulo organizacional. Pode também ser criada direto do formulário de novo produto (botão "+" ao lado do campo Categoria).
           </p>
 
-          <h3 class="ajuda-sub">Deletar uma Marca ou Categoria</h3>
+          <h3 class="ajuda-sub">Adicionar Cor ou Tamanho</h3>
+          <ol class="ajuda-list ajuda-list--num">
+            <li>Vá em <b>Estoque → ⚙ Gerenciar</b>.</li>
+            <li>Clica na aba <b>Cores</b> ou <b>Tamanhos</b>.</li>
+            <li>Digita o nome da opção, por exemplo <b>Jeans</b> ou <b>Único</b>.</li>
+            <li>Clica em <b>Adicionar</b>. A opção já aparece no cadastro e no filtro do estoque.</li>
+          </ol>
+
+          <h3 class="ajuda-sub">Deletar uma Marca, Categoria, Cor ou Tamanho</h3>
           <p class="ajuda-p">
-            Na mesma tela <b>⚙ Gerenciar</b>, clica no ícone de lixeira ao lado da marca/categoria. <b>Cuidado:</b> se você deletar uma marca que tem produtos usando ela, os produtos vão ficar "sem marca" — mas continuam no estoque, é só o vínculo que se perde.
+            Na mesma tela <b>⚙ Gerenciar</b>, clica em <b>Excluir</b> ao lado da opção. Produtos antigos continuam salvos com o valor que já tinham; a exclusão só remove a opção das próximas listas.
           </p>
         </section>
 

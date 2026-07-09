@@ -6,7 +6,7 @@ import { adicionarDebito } from "./clientes.js";
 export async function fetchPedidosAtivos() {
   const { data, error } = await db
     .from("pedidos")
-    .select("*, clientes(nome), itens_pedido(id)")
+    .select("*, clientes(nome), itens_pedido(id, quantidade)")
     .eq("status", "ativo")
     .order("created_at", { ascending: false });
   if (error) throw error;

@@ -1,13 +1,16 @@
-import { fetchRoupas, reporEstoque, deleteRoupa, insertRoupa } from "../db/estoque.js";
+import { fetchRoupas, reporEstoque, deleteRoupa, insertRoupa, updateRoupa } from "../db/estoque.js";
 import { fetchMarcas, insertMarca, updateMarca, deleteMarca } from "../db/marcas.js";
 import { fetchCategorias, insertCategoria, updateCategoria, deleteCategoria } from "../db/categorias.js";
+import { fetchEstoqueOpcoes, insertEstoqueOpcao, updateEstoqueOpcao, deleteEstoqueOpcao } from "../db/estoqueOpcoes.js";
 import { abrirScanner } from "../scanner.js";
-import { brl, esc, gerarSKU, showToast, compressImage } from "../utils.js";
+import { brl, compressImage, escapeAttr, escapeHtml, expandProductsWithVariants, gerarSKU, productMatchesSearch, readMoney, readPositiveInteger, showToast } from "../utils.js";
 
 // ── Estado ────────────────────────────────────────────────────
 let allProducts   = [];
 let allMarcas     = [];
 let allCategorias = [];
+let allTamanhos   = [];
+let allCores      = [];
 let _gerenciarBound = false;
 
 // ── Template da view ──────────────────────────────────────────
@@ -23,18 +26,10 @@ export function renderView() {
             <svg class="search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="8.5" cy="8.5" r="5.5"/><path d="M17 17l-4-4"/>
             </svg>
-            <input type="text" id="estoqueSearch" class="search-input" placeholder="SKU / Nome">
+            <input type="text" id="estoqueSearch" class="search-input" placeholder="Código / SKU / Nome">
           </div>
-          <select id="filterTam" class="filter-select"><option value="">Tamanho</option>
-            <option>PP</option><option>P</option><option>M</option><option>G</option>
-            <option>GG</option><option>XGG</option><option>34</option><option>36</option>
-            <option>38</option><option>40</option><option>42</option><option>44</option><option>46</option>
-          </select>
-          <select id="filterCor" class="filter-select"><option value="">Cor</option>
-            <option>Preto</option><option>Branco</option><option>Azul</option><option>Vermelho</option>
-            <option>Verde</option><option>Rosa</option><option>Bege</option><option>Marrom</option>
-            <option>Cinza</option><option>Amarelo</option><option>Outra</option>
-          </select>
+          <select id="filterTam" class="filter-select"><option value="">Tamanho</option></select>
+          <select id="filterCor" class="filter-select"><option value="">Cor</option></select>
           <select id="filterCat" class="filter-select"><option value="">Categoria</option></select>
           <select id="filterMarca" class="filter-select"><option value="">Marca</option></select>
           <button id="btnGerenciarMarcas" class="btn-gerenciar">⚙ Gerenciar</button>
@@ -60,7 +55,7 @@ export function renderView() {
       <div id="modalEstoque" class="modal-overlay" hidden>
         <div class="modal">
           <div class="modal-header">
-            <h2>Novo Produto</h2>
+            <h2 id="modalEstoqueTitulo">Novo Produto</h2>
             <button class="modal-close" data-close="modalEstoque">&times;</button>
           </div>
           <form id="formEstoque" class="modal-form" novalidate>
@@ -117,18 +112,12 @@ export function renderView() {
                 <label>Tamanho <span class="req">*</span></label>
                 <select id="fTamanho" required>
                   <option value="">Selecionar...</option>
-                  <option>PP</option><option>P</option><option>M</option><option>G</option>
-                  <option>GG</option><option>XGG</option><option>34</option><option>36</option>
-                  <option>38</option><option>40</option><option>42</option><option>44</option><option>46</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Cor <span class="req">*</span></label>
                 <select id="fCor" required>
                   <option value="">Selecionar...</option>
-                  <option>Preto</option><option>Branco</option><option>Azul</option><option>Vermelho</option>
-                  <option>Verde</option><option>Rosa</option><option>Bege</option><option>Marrom</option>
-                  <option>Cinza</option><option>Amarelo</option><option>Outra</option>
                 </select>
               </div>
             </div>
@@ -211,6 +200,8 @@ export function renderView() {
             <div class="mgr-tabs">
               <button class="mgr-tab mgr-tab--active" data-tab="marcas">Marcas</button>
               <button class="mgr-tab" data-tab="categorias">Categorias</button>
+              <button class="mgr-tab" data-tab="cores">Cores</button>
+              <button class="mgr-tab" data-tab="tamanhos">Tamanhos</button>
             </div>
 
             <!-- Seção: Marcas -->
@@ -227,6 +218,11 @@ export function renderView() {
                   <label>Margem (%) <span class="req">*</span></label>
                   <input type="number" id="mMargem" required min="0" max="999" step="0.01" placeholder="50">
                 </div>
+                <div class="form-group">
+                  <label>Logo da Marca</label>
+                  <input type="url" id="mLogoUrl" placeholder="https://... ou envie arquivo">
+                  <input type="file" id="mLogoFile" accept="image/*" style="margin-top:0.35rem">
+                </div>
                 <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;margin-bottom:0">Adicionar</button>
               </form>
             </div>
@@ -240,6 +236,34 @@ export function renderView() {
                 <div class="form-group">
                   <label>Nome da Categoria <span class="req">*</span></label>
                   <input type="text" id="cNome" required placeholder="Ex: Blazer">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;margin-bottom:0">Adicionar</button>
+              </form>
+            </div>
+
+            <!-- Seção: Cores -->
+            <div class="mgr-section" id="mgrCores">
+              <div id="mgrCoresList" class="mgr-list">
+                <div class="loading"><div class="spinner"></div></div>
+              </div>
+              <form id="formNovaCor" class="mgr-add-form" novalidate>
+                <div class="form-group">
+                  <label>Nome da Cor <span class="req">*</span></label>
+                  <input type="text" id="corNome" required placeholder="Ex: Jeans">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;margin-bottom:0">Adicionar</button>
+              </form>
+            </div>
+
+            <!-- Seção: Tamanhos -->
+            <div class="mgr-section" id="mgrTamanhos">
+              <div id="mgrTamanhosList" class="mgr-list">
+                <div class="loading"><div class="spinner"></div></div>
+              </div>
+              <form id="formNovoTamanho" class="mgr-add-form" novalidate>
+                <div class="form-group">
+                  <label>Nome do Tamanho <span class="req">*</span></label>
+                  <input type="text" id="tamNome" required placeholder="Ex: Único">
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;margin-bottom:0">Adicionar</button>
               </form>
@@ -264,6 +288,11 @@ export function renderView() {
             <div class="form-group">
               <label>Margem (%) <span class="req">*</span></label>
               <input type="number" id="editMarcaMargem" required min="0" max="999" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Logo da Marca</label>
+              <input type="url" id="editMarcaLogoUrl" placeholder="https://... ou envie arquivo">
+              <input type="file" id="editMarcaLogoFile" accept="image/*" style="margin-top:0.35rem">
             </div>
             <div class="modal-actions">
               <button type="button" class="btn btn-secondary" data-close="modalEditMarca">Cancelar</button>
@@ -303,7 +332,7 @@ export async function initView() {
   _gerenciarBound = false;
 
   // Carrega dados em paralelo
-  await Promise.all([loadProducts(), loadMarcas(), loadCategorias()]);
+  await Promise.all([loadProducts(), loadMarcas(), loadCategorias(), loadEstoqueOpcoes()]);
 
   // Filtros
   let searchTimer;
@@ -395,13 +424,15 @@ export async function initView() {
 
 async function loadProducts() {
   const grid = document.getElementById("estoqueGrid");
+  if (!grid) return;
   grid.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
     allProducts = await fetchRoupas();
+    if (!document.getElementById("estoqueGrid")) return;
     renderGrid(allProducts);
   } catch (err) {
     showToast(err.message, "error");
-    grid.innerHTML = "";
+    if (document.getElementById("estoqueGrid")) grid.innerHTML = "";
   }
 }
 
@@ -419,6 +450,20 @@ async function loadCategorias() {
   populateCatSelects();
 }
 
+async function loadEstoqueOpcoes() {
+  try {
+    [allTamanhos, allCores] = await Promise.all([
+      fetchEstoqueOpcoes("tamanho"),
+      fetchEstoqueOpcoes("cor"),
+    ]);
+  } catch (err) {
+    showToast(err.message, "error");
+    allTamanhos = [];
+    allCores = [];
+  }
+  populateOptionSelects();
+}
+
 /** Popula todos os selects de marca na página */
 function populateMarcaSelects() {
   const selects = ["fMarca", "filterMarca"];
@@ -428,7 +473,7 @@ function populateMarcaSelects() {
     const isFilter = id === "filterMarca";
     const defaultOpt = isFilter ? '<option value="">Marca</option>' : '<option value="">Sem marca</option>';
     sel.innerHTML = defaultOpt + allMarcas.map(m =>
-      `<option value="${m.id}">${esc(m.nome)}</option>`
+      `<option value="${m.id}">${m.nome}</option>`
     ).join("");
   });
 }
@@ -444,7 +489,7 @@ function populateCatSelects() {
       ? '<option value="">Categoria</option>'
       : '<option value="">Selecionar...</option>';
     sel.innerHTML = defaultOpt + allCategorias.map(c =>
-      `<option value="${c.id}">${esc(c.nome)}</option>`
+      `<option value="${c.id}">${c.nome}</option>`
     ).join("");
     // Se não há categorias no banco, mantém fallback hardcoded no filtro
     if (allCategorias.length === 0 && isFilter) {
@@ -456,6 +501,23 @@ function populateCatSelects() {
   });
 }
 
+function populateOptionSelects() {
+  populateOptionSelect("fTamanho", allTamanhos, "Selecionar...");
+  populateOptionSelect("filterTam", allTamanhos, "Tamanho");
+  populateOptionSelect("fCor", allCores, "Selecionar...");
+  populateOptionSelect("filterCor", allCores, "Cor");
+}
+
+function populateOptionSelect(id, options, placeholder) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>` + options.map(option =>
+    `<option value="${escapeAttr(option.nome)}">${escapeHtml(option.nome)}</option>`
+  ).join("");
+  if (current && options.some(option => option.nome === current)) sel.value = current;
+}
+
 function applyFilters() {
   const search   = document.getElementById("estoqueSearch").value.toLowerCase();
   const tamanho  = document.getElementById("filterTam").value;
@@ -463,19 +525,24 @@ function applyFilters() {
   const catVal   = document.getElementById("filterCat").value;
   const marcaVal = document.getElementById("filterMarca").value;
 
-  const filtered = allProducts.filter(p => {
+  const productsMatchingFilters = allProducts.filter(p => {
     // Categoria: compara id ou nome (depende se tabela categorias existe)
     const catMatch = !catVal || p.categoria === catVal ||
       (allCategorias.find(c => c.id === catVal)?.nome === p.categoria);
     const marcaMatch = !marcaVal || p.marca_id === marcaVal;
     return (
-      (!search   || p.nome.toLowerCase().includes(search) || p.sku?.toLowerCase().includes(search)) &&
       (!tamanho  || p.tamanho === tamanho) &&
       (!cor      || p.cor === cor) &&
       catMatch &&
       marcaMatch
     );
   });
+  const directMatches = search
+    ? productsMatchingFilters.filter(p => productMatchesSearch(p, search))
+    : productsMatchingFilters;
+  const filtered = search && !tamanho
+    ? expandProductsWithVariants(directMatches, productsMatchingFilters)
+    : directMatches;
   renderGrid(filtered);
 }
 
@@ -503,31 +570,39 @@ function buildCard(p) {
   card.dataset.id  = p.id;
   card.dataset.qty = p.quantidade;
 
-  const img = p.imagem_url
-    ? `<img src="${esc(p.imagem_url)}" alt="${esc(p.nome)}" class="pcard-img" loading="lazy" onerror="this.outerHTML='<div class=\\'pcard-img pcard-img--empty\\'>👗</div>'">`
-    : `<div class="pcard-img pcard-img--empty">👗</div>`;
+  const fallbackImg = `<div class="pcard-img pcard-img--empty">👗</div>`;
+  const cardImage = p.imagem_url
+    ? `<img src="${escapeAttr(p.imagem_url)}" alt="${escapeAttr(p.nome)}" class="pcard-img" loading="lazy" onerror="this.outerHTML='<div class=\\'pcard-img pcard-img--empty\\'>👗</div>'">`
+    : p.marcas?.logo_url
+      ? `<img src="${escapeAttr(p.marcas.logo_url)}" alt="Logo ${escapeAttr(p.marcas.nome)}" class="pcard-img pcard-img--brand" loading="lazy" onerror="this.style.display='none'">`
+      : fallbackImg;
 
   // Marca badge (Feature 1)
   const marcaInfo = p.marcas
-    ? `<span class="pcard-marca">${esc(p.marcas.nome)} — ${p.marcas.margem_padrao}%</span>`
+    ? `<span class="pcard-marca">${escapeHtml(p.marcas.nome)} — ${escapeHtml(p.marcas.margem_padrao)}%</span>`
+    : "";
+  const barcodeInfo = p.barcode
+    ? `<span class="pcard-meta">COD: ${escapeHtml(p.barcode)}</span>`
     : "";
 
   card.innerHTML = `
-    ${img}
+    ${cardImage}
     ${unavail ? `<span class="unavail-badge">Indisponível</span>` : ""}
     <div class="pcard-body">
-      <span class="pcard-sku">${esc(p.sku) || "—"}</span>
-      <span class="pcard-name" title="${esc(p.nome)}">${esc(p.nome)}</span>
+      <span class="pcard-sku">${escapeHtml(p.sku || "—")}</span>
+      <span class="pcard-name" title="${escapeAttr(p.nome)}">${escapeHtml(p.nome)}</span>
       ${marcaInfo}
-      <span class="pcard-meta">TAM: ${esc(p.tamanho)} &nbsp;|&nbsp; COR: ${esc(p.cor)}</span>
+      ${barcodeInfo}
+      <span class="pcard-meta">TAM: ${escapeHtml(p.tamanho)} &nbsp;|&nbsp; COR: ${escapeHtml(p.cor)}</span>
       <div class="pcard-row">
-        <span class="pcard-qty ${unavail ? "pcard-qty--zero" : ""}">QTD: ${p.quantidade}</span>
+        <span class="pcard-qty ${unavail ? "pcard-qty--zero" : ""}">QTD: ${escapeHtml(p.quantidade)}</span>
         <span class="pcard-price">${brl(p.preco)}</span>
       </div>
     </div>
     <div class="pcard-footer">
-      <button class="pcard-btn btn-repor" data-id="${p.id}" data-nome="${esc(p.nome)}" data-qty="${p.quantidade}">+ Repor</button>
-      <button class="pcard-btn pcard-btn--danger btn-deletar" data-id="${p.id}">🗑 Deletar</button>
+      <button class="pcard-btn btn-repor" data-id="${escapeAttr(p.id)}" data-nome="${escapeAttr(p.nome)}" data-qty="${escapeAttr(p.quantidade)}">+ Repor</button>
+      <button class="pcard-btn btn-editar" data-id="${escapeAttr(p.id)}">Editar</button>
+      <button class="pcard-btn pcard-btn--danger btn-deletar" data-id="${escapeAttr(p.id)}">🗑 Deletar</button>
     </div>`;
   return card;
 }
@@ -535,10 +610,36 @@ function buildCard(p) {
 function openModal() {
   const form = document.getElementById("formEstoque");
   form.reset();
+  delete form.dataset.editingId;
+  document.getElementById("modalEstoqueTitulo").textContent = "Novo Produto";
+  document.getElementById("btnSalvarProduto").textContent = "Salvar Produto";
   document.getElementById("fSKU").value = gerarSKU();
   document.getElementById("catAddInline").classList.remove("visible");
   document.getElementById("modalEstoque").hidden = false;
   document.getElementById("fNome").focus();
+}
+
+function openEditModal(product) {
+  const form = document.getElementById("formEstoque");
+  form.reset();
+  form.dataset.editingId = product.id;
+  document.getElementById("modalEstoqueTitulo").textContent = "Editar Produto";
+  document.getElementById("btnSalvarProduto").textContent = "Salvar Alterações";
+  document.getElementById("fBarcode").value = product.barcode ?? "";
+  document.getElementById("fNome").value = product.nome ?? "";
+  document.getElementById("fSKU").value = product.sku ?? "";
+  const categoria = allCategorias.find(c => c.nome === product.categoria);
+  document.getElementById("fCategoria").value = categoria?.id ?? product.categoria ?? "";
+  document.getElementById("fMarca").value = product.marca_id ?? "";
+  document.getElementById("fTamanho").value = product.tamanho ?? "";
+  document.getElementById("fCor").value = product.cor ?? "";
+  document.getElementById("fPrecoCusto").value = product.preco_custo ?? "";
+  document.getElementById("fPreco").value = product.preco ?? "";
+  document.getElementById("fQtd").value = product.quantidade ?? 0;
+  document.getElementById("fImgUrl").value = product.imagem_url ?? "";
+  document.getElementById("catAddInline").classList.remove("visible");
+  document.getElementById("modalEstoque").hidden = false;
+  document.getElementById("fBarcode").focus();
 }
 
 function closeModal(id) {
@@ -552,6 +653,7 @@ function openModalGerenciar(tab = "marcas") {
   switchTab(tab);
   renderMgrMarcas();
   renderMgrCategorias();
+  renderMgrOpcoes();
   bindGerenciarEvents();
 }
 
@@ -571,10 +673,13 @@ function bindGerenciarEvents() {
     const margem = parseFloat(document.getElementById("mMargem").value);
     if (!nome || isNaN(margem)) return;
     try {
-      await insertMarca({ nome, margem_padrao: margem });
+      const logo_url = await readMarcaLogoInput("m");
+      await insertMarca({ nome, margem_padrao: margem, logo_url });
       allMarcas = await fetchMarcas();
+      allProducts = await fetchRoupas();
       populateMarcaSelects();
       renderMgrMarcas();
+      applyFilters();
       document.getElementById("formNovaMaraca").reset();
       showToast(`Marca "${nome}" criada.`);
     } catch (err) { showToast(err.message, "error"); }
@@ -595,13 +700,27 @@ function bindGerenciarEvents() {
     } catch (err) { showToast(err.message, "error"); }
   });
 
+  document.getElementById("formNovaCor").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await handleCreateOpcao("cor", "corNome", e.currentTarget);
+  });
+
+  document.getElementById("formNovoTamanho").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await handleCreateOpcao("tamanho", "tamNome", e.currentTarget);
+  });
+
   // Editar/Deletar marca via delegação
   document.getElementById("mgrMarcasList").addEventListener("click", async (e) => {
     const editBtn = e.target.closest(".mgr-item-edit[data-mid]");
     if (editBtn) {
-      document.getElementById("editMarcaId").value = editBtn.dataset.mid;
-      document.getElementById("editMarcaNome").value = editBtn.dataset.nome;
-      document.getElementById("editMarcaMargem").value = editBtn.dataset.margem;
+      const marca = allMarcas.find(m => m.id === editBtn.dataset.mid);
+      if (!marca) return;
+      document.getElementById("editMarcaId").value = marca.id;
+      document.getElementById("editMarcaNome").value = marca.nome;
+      document.getElementById("editMarcaMargem").value = marca.margem_padrao;
+      document.getElementById("editMarcaLogoUrl").value = marca.logo_url ?? "";
+      document.getElementById("editMarcaLogoFile").value = "";
       document.getElementById("modalEditMarca").hidden = false;
       setTimeout(() => document.getElementById("editMarcaNome").focus(), 50);
       return;
@@ -613,8 +732,10 @@ function bindGerenciarEvents() {
     try {
       await deleteMarca(delBtn.dataset.mid);
       allMarcas = await fetchMarcas();
+      allProducts = await fetchRoupas();
       populateMarcaSelects();
       renderMgrMarcas();
+      applyFilters();
       showToast("Marca removida.");
     } catch (err) { showToast(err.message, "error"); }
   });
@@ -641,6 +762,9 @@ function bindGerenciarEvents() {
     } catch (err) { showToast(err.message, "error"); }
   });
 
+  document.getElementById("mgrCoresList").addEventListener("click", e => handleOpcaoListClick(e, "cor"));
+  document.getElementById("mgrTamanhosList").addEventListener("click", e => handleOpcaoListClick(e, "tamanho"));
+
   // Submit do modal Editar Marca
   document.getElementById("formEditMarca").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -650,10 +774,13 @@ function bindGerenciarEvents() {
     if (!nome) { showToast("Nome não pode ser vazio.", "error"); return; }
     if (isNaN(margem) || margem < 0) { showToast("Margem inválida.", "error"); return; }
     try {
-      await updateMarca(id, { nome, margem_padrao: margem });
+      const logo_url = await readMarcaLogoInput("editMarca");
+      await updateMarca(id, { nome, margem_padrao: margem, logo_url });
       allMarcas = await fetchMarcas();
+      allProducts = await fetchRoupas();
       populateMarcaSelects();
       renderMgrMarcas();
+      applyFilters();
       closeModal("modalEditMarca");
       showToast(`Marca atualizada para "${nome}".`);
     } catch (err) { showToast(err.message, "error"); }
@@ -676,6 +803,84 @@ function bindGerenciarEvents() {
   });
 }
 
+async function handleCreateOpcao(tipo, inputId, form) {
+  const nome = document.getElementById(inputId).value.trim();
+  if (!nome) return;
+  try {
+    await insertEstoqueOpcao(tipo, nome);
+    await loadEstoqueOpcoes();
+    renderMgrOpcoes();
+    applyFilters();
+    form.reset();
+    showToast(`${labelOpcaoTipo(tipo)} "${nome}" adicionada.`);
+  } catch (err) {
+    showToast(formatOpcaoError(err), "error");
+  }
+}
+
+async function handleOpcaoListClick(e, tipo) {
+  const editBtn = e.target.closest(".mgr-item-edit[data-oid]");
+  const delBtn = e.target.closest(".mgr-item-del[data-oid]");
+  if (!editBtn && !delBtn) return;
+
+  const id = (editBtn || delBtn).dataset.oid;
+  const nomeAtual = (editBtn || delBtn).dataset.nome;
+  if (id.startsWith("fallback-")) {
+    showToast("Rode o SQL das opções editáveis no Supabase antes de alterar esta lista.", "error");
+    return;
+  }
+
+  if (editBtn) {
+    const novoNome = prompt(`Novo nome para "${nomeAtual}":`, nomeAtual)?.trim();
+    if (!novoNome || novoNome === nomeAtual) return;
+    try {
+      await updateEstoqueOpcao(id, novoNome);
+      await loadEstoqueOpcoes();
+      renderMgrOpcoes();
+      applyFilters();
+      showToast(`${labelOpcaoTipo(tipo)} atualizada.`);
+    } catch (err) {
+      showToast(formatOpcaoError(err), "error");
+    }
+    return;
+  }
+
+  if (!confirm(`Excluir "${nomeAtual}" da lista? Produtos já cadastrados com esse valor continuam salvos.`)) return;
+  try {
+    await deleteEstoqueOpcao(id);
+    await loadEstoqueOpcoes();
+    renderMgrOpcoes();
+    applyFilters();
+    showToast(`${labelOpcaoTipo(tipo)} removida.`);
+  } catch (err) {
+    showToast(formatOpcaoError(err), "error");
+  }
+}
+
+function labelOpcaoTipo(tipo) {
+  return tipo === "cor" ? "Cor" : "Tamanho";
+}
+
+function formatOpcaoError(err) {
+  const message = err?.message ?? "";
+  if (message.includes("estoque_opcoes") || message.includes("schema cache") || message.includes("Could not find")) {
+    return "Rode o SQL das opções editáveis no Supabase e atualize a página.";
+  }
+  if (message.includes("duplicate key") || message.includes("estoque_opcoes_tipo_nome_key")) {
+    return "Essa opção já existe.";
+  }
+  return message || "Não foi possível salvar a opção.";
+}
+
+async function readMarcaLogoInput(prefix) {
+  const urlId = prefix === "m" ? "mLogoUrl" : `${prefix}LogoUrl`;
+  const fileId = prefix === "m" ? "mLogoFile" : `${prefix}LogoFile`;
+  const file = document.getElementById(fileId)?.files?.[0];
+  // PNG preserva transparência do logo; 300px é suficiente pro badge
+  if (file) return compressImage(file, 300, 0.9, "image/png");
+  return document.getElementById(urlId)?.value.trim() || null;
+}
+
 function switchTab(tab) {
   document.querySelectorAll(".mgr-tab").forEach(b =>
     b.classList.toggle("mgr-tab--active", b.dataset.tab === tab)
@@ -694,10 +899,21 @@ function renderMgrMarcas() {
   }
   el.innerHTML = allMarcas.map(m => `
     <div class="mgr-item">
-      <span class="mgr-item-nome">${esc(m.nome)}</span>
+      ${m.logo_url
+        ? `<img class="mgr-logo-thumb" src="${escapeAttr(m.logo_url)}" alt="Logo ${escapeAttr(m.nome)}">`
+        : `<span class="mgr-logo-thumb mgr-logo-thumb--empty">Logo</span>`}
+      <span class="mgr-item-nome">${escapeHtml(m.nome)}</span>
+      <span class="mgr-item-sub">Margem: ${escapeHtml(m.margem_padrao)}%</span>
+      <button class="mgr-item-edit" data-mid="${escapeAttr(m.id)}" title="Editar">Editar</button>
+      <button class="mgr-item-del" data-mid="${escapeAttr(m.id)}" data-nome="${escapeAttr(m.nome)}" title="Deletar">Excluir</button>
+    </div>`).join("");
+  return;
+  el.innerHTML = allMarcas.map(m => `
+    <div class="mgr-item">
+      <span class="mgr-item-nome">${m.nome}</span>
       <span class="mgr-item-sub">Margem: ${m.margem_padrao}%</span>
-      <button class="mgr-item-edit" data-mid="${m.id}" data-nome="${esc(m.nome)}" data-margem="${m.margem_padrao}" title="Editar">✏️</button>
-      <button class="mgr-item-del" data-mid="${m.id}" data-nome="${esc(m.nome)}" title="Deletar">🗑</button>
+      <button class="mgr-item-edit" data-mid="${m.id}" data-nome="${m.nome}" data-margem="${m.margem_padrao}" title="Editar">✏️</button>
+      <button class="mgr-item-del" data-mid="${m.id}" data-nome="${m.nome}" title="Deletar">🗑</button>
     </div>`).join("");
 }
 
@@ -710,18 +926,40 @@ function renderMgrCategorias() {
   }
   el.innerHTML = allCategorias.map(c => `
     <div class="mgr-item">
-      <span class="mgr-item-nome">${esc(c.nome)}</span>
-      <button class="mgr-item-edit" data-cid="${c.id}" data-nome="${esc(c.nome)}" title="Editar">✏️</button>
-      <button class="mgr-item-del" data-cid="${c.id}" data-nome="${esc(c.nome)}" title="Deletar">🗑</button>
+      <span class="mgr-item-nome">${c.nome}</span>
+      <button class="mgr-item-edit" data-cid="${c.id}" data-nome="${c.nome}" title="Editar">✏️</button>
+      <button class="mgr-item-del" data-cid="${c.id}" data-nome="${c.nome}" title="Deletar">🗑</button>
     </div>`).join("");
 }
 
 // ── Estado para repor/deletar ─────────────────────────────────
+function renderMgrOpcoes() {
+  renderMgrOpcaoList("mgrCoresList", allCores, "cor");
+  renderMgrOpcaoList("mgrTamanhosList", allTamanhos, "tamanho");
+}
+
+function renderMgrOpcaoList(elementId, options, tipo) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (!options.length) {
+    el.innerHTML = `<p class="empty-state" style="padding:0.5rem">Nenhuma opção cadastrada.</p>`;
+    return;
+  }
+  el.innerHTML = options.map(option => `
+    <div class="mgr-item">
+      <span class="mgr-item-nome">${escapeHtml(option.nome)}</span>
+      ${option.fallback ? `<span class="mgr-item-sub">Padrão</span>` : ""}
+      <button class="mgr-item-edit" data-oid="${escapeAttr(option.id)}" data-nome="${escapeAttr(option.nome)}" data-tipo="${escapeAttr(tipo)}" title="Editar">Editar</button>
+      <button class="mgr-item-del" data-oid="${escapeAttr(option.id)}" data-nome="${escapeAttr(option.nome)}" data-tipo="${escapeAttr(tipo)}" title="Deletar">Excluir</button>
+    </div>`).join("");
+}
+
 let pendingReporId = null;
 let pendingDelId = null;
 
 function handleGridClick(e) {
   const btnRepor = e.target.closest(".btn-repor");
+  const btnEdit  = e.target.closest(".btn-editar");
   const btnDel   = e.target.closest(".btn-deletar");
   if (btnRepor) {
     pendingReporId = btnRepor.dataset.id;
@@ -729,6 +967,10 @@ function handleGridClick(e) {
     document.getElementById("reporQtd").value = 1;
     document.getElementById("modalRepor").hidden = false;
     document.getElementById("reporQtd").focus();
+  }
+  if (btnEdit) {
+    const product = allProducts.find(p => p.id === btnEdit.dataset.id);
+    if (product) openEditModal(product);
   }
   if (btnDel) {
     pendingDelId = btnDel.dataset.id;
@@ -766,8 +1008,9 @@ async function handleSubmitProduto(e) {
   e.preventDefault();
   if (!e.target.checkValidity()) { e.target.reportValidity(); return; }
 
+  const editingId = e.target.dataset.editingId;
   const btn = document.getElementById("btnSalvarProduto");
-  btn.disabled = true; btn.textContent = "Salvando...";
+  btn.disabled = true; btn.textContent = editingId ? "Salvando..." : "Salvando...";
 
   let imagem_url = document.getElementById("fImgUrl").value.trim() || null;
   const file = document.getElementById("fImgFile").files[0];
@@ -786,26 +1029,42 @@ async function handleSubmitProduto(e) {
   const catNome = allCategorias.find(c => c.id === catVal)?.nome ?? catVal;
 
   const marcaId = document.getElementById("fMarca").value || null;
-  const precoCusto = parseFloat(document.getElementById("fPrecoCusto").value) || null;
+  const rawPrecoCusto = document.getElementById("fPrecoCusto").value.trim();
+  const precoCusto = rawPrecoCusto ? readMoney(rawPrecoCusto, null) : null;
+  const preco = readMoney(document.getElementById("fPreco").value, -1);
+  const quantidade = readPositiveInteger(document.getElementById("fQtd").value, -1);
+
+  if (preco < 0 || quantidade < 0) {
+    showToast("Revise preço e quantidade antes de salvar.", "error");
+    btn.disabled = false; btn.textContent = "Salvar Produto";
+    return;
+  }
 
   try {
-    const novo = await insertRoupa({
+    const payload = {
+      barcode:    document.getElementById("fBarcode").value.trim() || null,
       sku:        document.getElementById("fSKU").value.trim() || gerarSKU(),
       nome:       document.getElementById("fNome").value.trim(),
       categoria:  catNome,
       tamanho:    document.getElementById("fTamanho").value,
       cor:        document.getElementById("fCor").value,
-      preco:      parseFloat(document.getElementById("fPreco").value),
-      quantidade: parseInt(document.getElementById("fQtd").value, 10),
+      preco,
+      quantidade,
       imagem_url,
       marca_id:   marcaId,
       preco_custo: precoCusto,
-    });
-    allProducts.push(novo);
+    };
+
+    const saved = editingId
+      ? await updateRoupa(editingId, payload)
+      : await insertRoupa(payload);
+
+    allProducts = await fetchRoupas();
     allProducts.sort((a, b) => a.nome.localeCompare(b.nome));
     applyFilters();
     closeModal("modalEstoque");
-    showToast(`"${novo.nome}" adicionado ao estoque.`);
+    delete e.target.dataset.editingId;
+    showToast(editingId ? `"${saved.nome}" atualizado.` : `"${saved.nome}" adicionado ao estoque.`);
   } catch (err) {
     showToast(err.message, "error");
   } finally {
