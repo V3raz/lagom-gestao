@@ -8,6 +8,7 @@ import * as Clientes   from "./views/clientes.js";
 import * as Caderninho from "./views/caderninho.js";
 import * as Ajuda      from "./views/ajuda.js";
 import { mostrarOnboardingSeNecessario, reabrirOnboarding } from "./onboarding.js";
+import { mostrarAvisoAtualizacao } from "./updates.js";
 import { getSession, mostrarLogin, signOut, bancoAceitaAnonimo, vigiarSessao } from "./auth.js";
 
 // Mapa de rotas
@@ -97,6 +98,8 @@ function startApp() {
   navigate(normalizePath(window.location.hash));
   // Mostra onboarding na primeira visita
   mostrarOnboardingSeNecessario();
+  // Aviso grande de ATUALIZAÇÃO quando há versão nova (js/updates.js)
+  mostrarAvisoAtualizacao();
   // Expõe no console: lagom.tutorial()
   window.lagom = { tutorial: reabrirOnboarding };
 }
