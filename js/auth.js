@@ -26,6 +26,28 @@ export async function signOut() {
   window.location.reload();
 }
 
+/** Verifica se o banco ainda aceita leitura anônima (RLS não aplicado).
+ *  Com RLS ativo, a leitura anônima volta vazia (count 0) — por isso o
+ *  teste é "existe pelo menos 1 peça visível sem login?". */
+export async function bancoAceitaAnonimo() {
+  try {
+    const { count, error } = await db
+      .from("roupas")
+      .select("id", { count: "exact", head: true });
+    return !error && (count ?? 0) > 0;
+  } catch {
+    return false; // sem rede ou banco inacessível → cai na tela de login
+  }
+}
+
+/** Recarrega a página se a sessão cair (expirar/ser revogada) — volta pro login
+ *  em vez de deixar o app aberto dando erro em toda ação. */
+export function vigiarSessao() {
+  db.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") window.location.reload();
+  });
+}
+
 /** Mostra a tela de login. Chama onSucesso() quando o usuário entra. */
 export function mostrarLogin(onSucesso) {
   const screen = document.getElementById("authScreen");

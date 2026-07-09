@@ -8,7 +8,7 @@ import * as Clientes   from "./views/clientes.js";
 import * as Caderninho from "./views/caderninho.js";
 import * as Ajuda      from "./views/ajuda.js";
 import { mostrarOnboardingSeNecessario, reabrirOnboarding } from "./onboarding.js";
-import { getSession, mostrarLogin, signOut } from "./auth.js";
+import { getSession, mostrarLogin, signOut, bancoAceitaAnonimo, vigiarSessao } from "./auth.js";
 
 // Mapa de rotas
 const routes = {
@@ -101,10 +101,21 @@ function startApp() {
   window.lagom = { tutorial: reabrirOnboarding };
 }
 
-// Verifica sessão: se logado, arranca o app; senão, mostra o login.
+// Verifica sessão: se logado, arranca o app. Sem sessão, o login só é
+// exigido quando o banco estiver trancado (RLS aplicado) — enquanto o
+// banco aceitar leitura anônima, o app roda sem login, como sempre rodou.
+// Isso permite subir esta versão sem risco de bloquear a loja: o login
+// "liga" sozinho no dia em que o supabase/rls.sql for executado.
 async function boot() {
+  vigiarSessao();
   const session = await getSession();
   if (session) {
+    startApp();
+    return;
+  }
+  if (await bancoAceitaAnonimo()) {
+    // Banco ainda aberto: roda sem login e esconde o "Sair" (não há sessão)
+    document.getElementById("btnLogout").hidden = true;
     startApp();
   } else {
     mostrarLogin(startApp);
