@@ -12,9 +12,10 @@ import { escapeHtml } from "./utils.js";
 
 const CHANGELOG = [
   {
-    versao: "2026-07-09",
+    versao: "2026-07-09b",
     titulo: "O visual da loja voltou — e agora com login!",
     itens: [
+      "Corrigido o erro 'JWT expired': agora o app renova o acesso sozinho. Se aparecer a tela de login, é só entrar de novo.",
       "As logos das marcas voltaram a aparecer nas peças sem foto própria.",
       "A tela de Clientes voltou ao normal (cards, aniversários e débitos).",
       "Agora o sistema pede login pra entrar — seus dados estão protegidos. Use o e-mail e a senha que o Gustavo te passou.",
